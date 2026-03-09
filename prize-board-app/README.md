@@ -44,3 +44,8 @@ cd backend
 npm install
 npm test
 ```
+## Additional Documentation
+
+- `docs/architecture.md`
+- `docs/app-overview.md`
+
