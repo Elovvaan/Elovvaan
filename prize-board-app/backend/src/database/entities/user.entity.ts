@@ -14,6 +14,12 @@ export class User {
   @Column({ name: 'password_hash' })
   passwordHash!: string;
 
+  @Column({ type: 'int', default: 0 })
+  xp!: number;
+
+  @Column({ name: 'prestige_level', type: 'int', default: 0 })
+  prestigeLevel!: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 
