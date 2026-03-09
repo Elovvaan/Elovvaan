@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'screens/screens.dart';
 
 void main() {
-  runApp(const PrizeBoardApp());
+  runApp(const Swipe2WinApp());
 }
 
-class PrizeBoardApp extends StatelessWidget {
-  const PrizeBoardApp({super.key});
+class Swipe2WinApp extends StatelessWidget {
+  const Swipe2WinApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Prize Board',
+      title: 'Swipe2Win',
       theme: ThemeData(useMaterial3: true),
       initialRoute: '/login',
       routes: {

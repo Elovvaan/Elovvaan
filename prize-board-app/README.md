@@ -1,4 +1,4 @@
-# Prize Board App (Monorepo MVP)
+# Swipe2Win App (Monorepo MVP)
 
 This repository contains a runnable MVP for a sweepstakes board platform.
 

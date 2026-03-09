@@ -1,4 +1,4 @@
-# Prize Board MVP Architecture
+# Swipe2Win MVP Architecture
 
 - **Backend (NestJS):** REST + Socket.IO API, Stripe payment intents, TypeORM/PostgreSQL persistence.
 - **Mobile (Flutter):** JWT auth, board browsing/entry, winner updates via WebSocket.
