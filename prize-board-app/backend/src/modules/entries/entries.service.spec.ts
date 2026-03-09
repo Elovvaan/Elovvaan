@@ -8,7 +8,7 @@ describe('EntriesService', () => {
       entriesRepo,
       { get: jest.fn().mockResolvedValue({ id: 'b1' }), incrementSpots: jest.fn().mockResolvedValue({ id: 'b1', status: BoardStatus.LIVE }) } as any,
       { findById: jest.fn().mockResolvedValue({ id: 'p1' }) } as any,
-      { findById: jest.fn().mockResolvedValue({ id: 'u1' }) } as any,
+      { findById: jest.fn().mockResolvedValue({ id: 'u1', xp: 0, prestigeLevel: 0 }), awardXp: jest.fn().mockResolvedValue({ id: 'u1', xp: 100, prestigeLevel: 0 }) } as any,
       { selectWinner: jest.fn() } as any,
       { broadcast: jest.fn() } as any
     );

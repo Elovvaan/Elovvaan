@@ -30,12 +30,25 @@ export class EntriesService {
     if (!user || !payment) throw new Error('Invalid user or payment');
     const entry = await this.entriesRepo.save(this.entriesRepo.create({ board, user, payment }));
     const updatedBoard = await this.boardsService.incrementSpots(boardId);
+    const userAfterEntry = await this.usersService.awardXp(userId, 100);
+
     this.notificationsGateway.broadcast('entry_added', { boardId, entryId: entry.id });
     this.notificationsGateway.broadcast('board_update', updatedBoard);
+    this.notificationsGateway.broadcast('xp_updated', {
+      userId,
+      xp: userAfterEntry.xp,
+      prestigeLevel: userAfterEntry.prestigeLevel
+    });
+    this.notificationsGateway.broadcast('push_notification', {
+      userId,
+      title: 'Entry confirmed',
+      body: `You are in for ${updatedBoard.title}`
+    });
 
     if (updatedBoard.status === BoardStatus.FULL) {
       const entries = await this.entriesRepo.find({ where: { board: { id: boardId } }, relations: ['user'] });
       const winner = await this.winnersService.selectWinner(updatedBoard, entries);
+      await this.usersService.awardXp(winner.user.id, 500);
       this.notificationsGateway.broadcast('board_full', updatedBoard);
       this.notificationsGateway.broadcast('winner_selected', winner);
     }

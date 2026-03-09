@@ -18,4 +18,12 @@ export class UsersService {
   findById(id: string) {
     return this.usersRepo.findOne({ where: { id } });
   }
+
+  async awardXp(userId: string, delta: number) {
+    const user = await this.findById(userId);
+    if (!user) throw new Error('User not found');
+    user.xp += delta;
+    user.prestigeLevel = Math.floor(user.xp / 1000);
+    return this.usersRepo.save(user);
+  }
 }

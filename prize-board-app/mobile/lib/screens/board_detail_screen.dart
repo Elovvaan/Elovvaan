@@ -16,8 +16,16 @@ class BoardDetailScreen extends StatelessWidget {
             const SizedBox(height: 8),
             const Text('Prize value: \$4,000'),
             const Text('Ticket price: \$25'),
-            const Text('Spots remaining: 58'),
-            const SizedBox(height: 24),
+            const Text('Spots remaining: 16'),
+            const SizedBox(height: 12),
+            const Card(
+              child: ListTile(
+                leading: Icon(Icons.wifi_tethering),
+                title: Text('WebSocket gateway connected'),
+                subtitle: Text('Receiving board_update and winner_selected events.'),
+              ),
+            ),
+            const Spacer(),
             ElevatedButton(
               onPressed: () => Navigator.pushNamed(context, '/enter-board'),
               child: const Text('Enter board'),
