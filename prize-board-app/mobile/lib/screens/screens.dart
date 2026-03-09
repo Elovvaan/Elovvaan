@@ -1,0 +1,8 @@
+export 'login_screen.dart';
+export 'register_screen.dart';
+export 'home_screen.dart';
+export 'board_detail_screen.dart';
+export 'enter_board_screen.dart';
+export 'winner_screen.dart';
+export 'profile_screen.dart';
+export 'notifications_screen.dart';
