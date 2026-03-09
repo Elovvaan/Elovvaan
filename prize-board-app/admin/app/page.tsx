@@ -3,7 +3,7 @@ import Link from 'next/link';
 export default function Home() {
   return (
     <main className="space-y-3">
-      <h1 className="text-2xl font-bold">Prize Board Admin</h1>
+      <h1 className="text-2xl font-bold">Swipe2Win Admin</h1>
       <div className="space-x-4">
         <Link href="/login">Login</Link>
         <Link href="/dashboard">Dashboard</Link>
