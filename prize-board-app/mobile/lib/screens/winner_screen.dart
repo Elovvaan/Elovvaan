@@ -5,6 +5,18 @@ class WinnerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(appBar: AppBar(title: const Text('Winner')), body: const Center(child: Text('TODO: winner')));
+    return Scaffold(
+      appBar: AppBar(title: const Text('Winner')),
+      body: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.emoji_events, size: 56),
+            SizedBox(height: 12),
+            Text('Winner announced: @lucky_player_42', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
   }
 }

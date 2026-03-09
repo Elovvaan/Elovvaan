@@ -5,6 +5,21 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(appBar: AppBar(title: const Text('Profile')), body: const Center(child: Text('TODO: profile')));
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profile')),
+      body: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Name: Demo User'),
+            SizedBox(height: 8),
+            Text('Email: demo@swipe2win.app'),
+            SizedBox(height: 8),
+            Text('Entries this month: 3'),
+          ],
+        ),
+      ),
+    );
   }
 }
