@@ -14,7 +14,7 @@ export class PaymentsService {
     config: ConfigService,
     @InjectRepository(Payment) private paymentsRepo: Repository<Payment>
   ) {
-    this.stripe = new Stripe(config.get<string>('STRIPE_SECRET_KEY') || '', { apiVersion: '2024-04-10' });
+    this.stripe = new Stripe(config.get<string>('STRIPE_SECRET_KEY') || '', { apiVersion: '2024-06-20' });
   }
 
   async createIntent(user: User, amount: number) {

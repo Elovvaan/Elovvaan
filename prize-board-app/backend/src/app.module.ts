@@ -35,7 +35,7 @@ import { Notification } from './database/entities/notification.entity';
     PaymentsModule,
     WinnersModule,
     NotificationsModule
-  ]
+  ],
   providers: [RedisService]
 })
 export class AppModule {}
