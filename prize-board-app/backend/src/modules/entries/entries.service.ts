@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Entry } from '../../database/entities/entry.entity';
@@ -12,6 +12,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class EntriesService {
+  private static readonly MAX_ENTRIES_PER_USER = 5;
+
   constructor(
     @InjectRepository(Entry) private entriesRepo: Repository<Entry>,
     private boardsService: BoardsService,
@@ -36,6 +38,11 @@ export class EntriesService {
     const duplicate = await this.entriesRepo.findOne({ where: { payment: { id: paymentId } } });
     if (duplicate) {
       throw new BadRequestException('Entry already exists for this payment');
+    }
+
+    const userEntries = await this.entriesRepo.count({ where: { user: { id: userId } } });
+    if (userEntries >= EntriesService.MAX_ENTRIES_PER_USER) {
+      throw new ForbiddenException('Entry limit reached');
     }
 
     const payment = await this.paymentsService.assertPaymentSucceeded(paymentId, userId, boardId);
