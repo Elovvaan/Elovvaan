@@ -56,11 +56,18 @@ export class EntriesService {
 
     if (updatedBoard.status === BoardStatus.FULL) {
       const winner = await this.winnersService.selectWinner(updatedBoard.id);
-      await this.boardsService.closeBoard(updatedBoard.id);
-      await this.usersService.awardXp(winner.userId, 500);
+      const closedBoard = await this.boardsService.closeBoard(updatedBoard.id);
+      const winnerAfterAward = await this.usersService.awardXp(winner.userId, 500);
+
       await this.notificationsService.notify(winner.userId, 'WINNER_SELECTED', `You won ${updatedBoard.title}`);
-      this.notificationsGateway.broadcast('board_full', updatedBoard);
+      this.notificationsGateway.broadcast('board_full', closedBoard);
       this.notificationsGateway.broadcast('winner_selected', winner);
+      this.notificationsGateway.broadcast('board_update', closedBoard);
+      this.notificationsGateway.broadcast('xp_updated', {
+        userId: winner.userId,
+        xp: winnerAfterAward.xp,
+        prestigeLevel: winnerAfterAward.prestigeLevel
+      });
     }
 
     return entry;
