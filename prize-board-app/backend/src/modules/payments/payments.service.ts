@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import Stripe from 'stripe';
 import { Repository } from 'typeorm';
+import { BoardStatus } from '../../database/entities/board.entity';
 import { Payment, PaymentStatus } from '../../database/entities/payment.entity';
 import { UsersService } from '../users/users.service';
 import { BoardsService } from '../boards/boards.service';
@@ -10,6 +11,7 @@ import { BoardsService } from '../boards/boards.service';
 @Injectable()
 export class PaymentsService {
   private stripe: Stripe;
+  private stripeWebhookSecret: string;
 
   constructor(
     config: ConfigService,
@@ -18,6 +20,7 @@ export class PaymentsService {
     private boardsService: BoardsService
   ) {
     this.stripe = new Stripe(config.get<string>('STRIPE_SECRET_KEY') || '', { apiVersion: '2024-06-20' });
+    this.stripeWebhookSecret = config.get<string>('STRIPE_WEBHOOK_SECRET') || '';
   }
 
   async createIntent(userId: string, boardId: string) {
@@ -25,6 +28,10 @@ export class PaymentsService {
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    if (board.status !== BoardStatus.OPEN) {
+      throw new BadRequestException('Board is not open for payments');
     }
 
     const intent = await this.stripe.paymentIntents.create({
@@ -46,17 +53,33 @@ export class PaymentsService {
     return { clientSecret: intent.client_secret, paymentId: payment.id, paymentIntentId: intent.id };
   }
 
-  async processWebhook(eventType: string, paymentIntentId: string) {
-    if (!paymentIntentId) {
-      throw new BadRequestException('Missing paymentIntentId');
+  async processWebhook(signature: string | undefined, payload: Buffer) {
+    if (!signature) {
+      throw new BadRequestException('Missing stripe signature');
     }
 
-    if (eventType === 'payment_intent.succeeded') {
+    if (!this.stripeWebhookSecret) {
+      throw new BadRequestException('Missing STRIPE_WEBHOOK_SECRET configuration');
+    }
+
+    let event: Stripe.Event;
+    try {
+      event = this.stripe.webhooks.constructEvent(payload, signature, this.stripeWebhookSecret);
+    } catch {
+      throw new BadRequestException('Invalid webhook signature');
+    }
+
+    const paymentIntentId = (event.data.object as Stripe.PaymentIntent)?.id;
+    if (!paymentIntentId) {
+      return { ok: true, ignored: true };
+    }
+
+    if (event.type === 'payment_intent.succeeded') {
       await this.updateStatusByIntentId(paymentIntentId, PaymentStatus.SUCCEEDED);
       return { ok: true };
     }
 
-    if (eventType === 'payment_intent.payment_failed') {
+    if (event.type === 'payment_intent.payment_failed') {
       await this.updateStatusByIntentId(paymentIntentId, PaymentStatus.FAILED);
       return { ok: true };
     }

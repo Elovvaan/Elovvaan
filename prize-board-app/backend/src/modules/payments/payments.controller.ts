@@ -1,4 +1,5 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Headers, Post, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreatePaymentIntentDto } from './dto';
@@ -14,7 +15,8 @@ export class PaymentsController {
   }
 
   @Post('webhook')
-  webhook(@Body() body: { type: string; data?: { object?: { id?: string } } }) {
-    return this.paymentsService.processWebhook(body.type, body.data?.object?.id || '');
+  webhook(@Headers('stripe-signature') signature: string | undefined, @Req() req: Request) {
+    const payload = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
+    return this.paymentsService.processWebhook(signature, payload);
   }
 }
