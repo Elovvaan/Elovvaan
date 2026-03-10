@@ -30,7 +30,8 @@ Admin: `http://localhost:3001`
 - `POST /api/boards` (admin key header)
 - `POST /api/boards/:id/enter`
 - `POST /api/payments/create-intent`
-- `POST /api/payments/webhook`
+- `POST /payments/webhook` (public endpoint for payment providers)
+- `POST /api/payments/webhook` (backward-compatible alias)
 - `GET /api/boards/:id/winner`
 
 ## Environment Variables
