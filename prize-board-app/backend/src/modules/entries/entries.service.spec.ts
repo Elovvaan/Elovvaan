@@ -6,7 +6,8 @@ describe('EntriesService', () => {
     const entriesRepo = {
       save: jest.fn().mockResolvedValue({ id: 'e1' }),
       create: jest.fn().mockReturnValue({}),
-      findOne: jest.fn().mockResolvedValue(null)
+      findOne: jest.fn().mockResolvedValue(null),
+      count: jest.fn().mockResolvedValue(0)
     } as any;
     const service = new EntriesService(
       entriesRepo,
@@ -20,5 +21,26 @@ describe('EntriesService', () => {
 
     const result = await service.enterBoard('b1', 'u1', 'p1');
     expect(result.id).toBe('e1');
+  });
+
+  it('rejects when user reached entry limit', async () => {
+    const entriesRepo = {
+      save: jest.fn(),
+      create: jest.fn(),
+      findOne: jest.fn().mockResolvedValue(null),
+      count: jest.fn().mockResolvedValue(5)
+    } as any;
+
+    const service = new EntriesService(
+      entriesRepo,
+      { get: jest.fn().mockResolvedValue({ id: 'b1', status: BoardStatus.OPEN }) } as any,
+      { assertPaymentSucceeded: jest.fn() } as any,
+      { findById: jest.fn().mockResolvedValue({ id: 'u1' }), awardXp: jest.fn() } as any,
+      { selectWinner: jest.fn() } as any,
+      { broadcast: jest.fn() } as any,
+      { notify: jest.fn() } as any
+    );
+
+    await expect(service.enterBoard('b1', 'u1', 'p1')).rejects.toThrow('Entry limit reached');
   });
 });
