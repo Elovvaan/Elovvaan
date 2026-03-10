@@ -1,40 +1,44 @@
-import Link from 'next/link';
+'use client';
 
-const boards = [
-  { id: 'luxury-vacation', title: 'Luxury Vacation Raffle', status: 'LIVE', spots: '84 / 100' },
-  { id: 'gaming-setup', title: 'Gaming Setup Giveaway', status: 'FULL', spots: '50 / 50' },
-  { id: 'dream-car', title: 'Dream Car Sprint', status: 'UPCOMING', spots: '0 / 500' }
-];
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { BoardTable } from '@/components/BoardTable';
+import { Layout } from '@/components/Layout';
+import { Board } from '@/services/types';
+import { useSocket } from '@/hooks/useSocket';
 
 export default function BoardsPage() {
+  const [boards, setBoards] = useState<Board[]>([]);
+  const feed = useSocket(['board_update', 'entry_added', 'board_full', 'winner_selected']);
+
+  async function loadBoards() {
+    const res = await fetch('/api/admin/boards');
+    const data = await res.json();
+    setBoards(data);
+  }
+
+  useEffect(() => {
+    loadBoards();
+  }, []);
+
+  useEffect(() => {
+    if (feed.length) {
+      loadBoards();
+    }
+  }, [feed.length]);
+
+  async function closeBoard(id: string) {
+    await fetch(`/api/admin/boards/${id}/close`, { method: 'PATCH' });
+    await loadBoards();
+  }
+
   return (
-    <main className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Board Management</h1>
+    <Layout>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Boards</h1>
         <Link href="/boards/create" className="rounded bg-indigo-600 px-4 py-2 text-white">Create Board</Link>
       </div>
-      <div className="overflow-hidden rounded-lg bg-white shadow">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-slate-500">
-            <tr>
-              <th className="p-3">Board</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Entries</th>
-              <th className="p-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {boards.map((board) => (
-              <tr key={board.id} className="border-t">
-                <td className="p-3 font-medium">{board.title}</td>
-                <td className="p-3">{board.status}</td>
-                <td className="p-3">{board.spots}</td>
-                <td className="p-3"><Link className="text-indigo-700" href={`/boards/${board.id}`}>View details</Link></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </main>
+      <BoardTable boards={boards} onClose={closeBoard} />
+    </Layout>
   );
 }
