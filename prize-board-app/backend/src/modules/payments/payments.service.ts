@@ -12,6 +12,7 @@ import { BoardsService } from '../boards/boards.service';
 export class PaymentsService {
   private stripe: Stripe;
   private stripeWebhookSecret: string;
+  private processedEvents = new Set<string>();
 
   constructor(
     config: ConfigService,
@@ -68,6 +69,12 @@ export class PaymentsService {
     } catch {
       throw new BadRequestException('Invalid webhook signature');
     }
+
+    if (this.processedEvents.has(event.id)) {
+      return { ok: true, ignored: true };
+    }
+
+    this.processedEvents.add(event.id);
 
     const paymentIntentId = (event.data.object as Stripe.PaymentIntent)?.id;
     if (!paymentIntentId) {
