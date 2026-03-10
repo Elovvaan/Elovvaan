@@ -17,4 +17,8 @@ export class RedisService {
   set(key: string, value: string, ttlSeconds = 30) {
     return this.client.set(key, value, 'EX', ttlSeconds);
   }
+
+  del(key: string) {
+    return this.client.del(key);
+  }
 }

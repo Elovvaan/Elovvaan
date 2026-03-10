@@ -1,6 +1,8 @@
-import { Body, Controller, Get, Headers, Param, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { BoardsService } from './boards.service';
 import { CreateBoardDto } from './dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../../common/guards/admin.guard';
 
 @Controller('boards')
 export class BoardsController {
@@ -17,8 +19,8 @@ export class BoardsController {
   }
 
   @Post()
-  create(@Body() dto: CreateBoardDto, @Headers('x-admin-key') adminKey?: string) {
-    if (adminKey !== 'dev-admin') throw new UnauthorizedException('Admin only');
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  create(@Body() dto: CreateBoardDto) {
     return this.boardsService.create(dto);
   }
 }

@@ -1,20 +1,17 @@
-import { IsInt, IsNumber, IsString, IsUrl, Min } from 'class-validator';
+import { IsInt, IsNumber, IsString, Min } from 'class-validator';
 
 export class CreateBoardDto {
   @IsString()
   title!: string;
 
   @IsString()
-  prizeName!: string;
+  description!: string;
 
-  @IsUrl()
-  prizeImageUrl!: string;
-
-  @IsNumber()
-  @Min(0.5)
-  entryPrice!: number;
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  pricePerEntry!: number;
 
   @IsInt()
   @Min(1)
-  totalSpots!: number;
+  maxEntries!: number;
 }

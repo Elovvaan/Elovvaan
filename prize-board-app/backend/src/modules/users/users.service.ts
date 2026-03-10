@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../database/entities/user.entity';
@@ -21,7 +21,10 @@ export class UsersService {
 
   async awardXp(userId: string, delta: number) {
     const user = await this.findById(userId);
-    if (!user) throw new Error('User not found');
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     user.xp += delta;
     user.prestigeLevel = Math.floor(user.xp / 1000);
     return this.usersRepo.save(user);

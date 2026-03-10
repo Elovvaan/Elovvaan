@@ -14,6 +14,9 @@ export class User {
   @Column({ name: 'password_hash' })
   passwordHash!: string;
 
+  @Column({ name: 'is_admin', default: false })
+  isAdmin!: boolean;
+
   @Column({ type: 'int', default: 0 })
   xp!: number;
 
