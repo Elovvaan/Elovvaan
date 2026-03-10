@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Entry } from './entry.entity';
 import { Payment } from './payment.entity';
 import { Winner } from './winner.entity';
@@ -10,6 +10,10 @@ export class User {
 
   @Column({ unique: true })
   email!: string;
+
+  @Index({ unique: true })
+  @Column({ name: 'referral_code', unique: true })
+  referralCode!: string;
 
   @Column({ name: 'password_hash' })
   passwordHash!: string;

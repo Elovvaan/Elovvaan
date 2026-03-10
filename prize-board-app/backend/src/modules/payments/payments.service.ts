@@ -1,30 +1,45 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import Stripe from 'stripe';
 import { Repository } from 'typeorm';
 import { BoardStatus } from '../../database/entities/board.entity';
 import { Payment, PaymentStatus } from '../../database/entities/payment.entity';
+import { Entry } from '../../database/entities/entry.entity';
 import { UsersService } from '../users/users.service';
 import { BoardsService } from '../boards/boards.service';
+import { QueueService } from '../../common/queues/queue.service';
+import { ENTRY_QUEUE, PAYMENT_QUEUE } from '../../common/queues/queue.constants';
+import { ReferralsService } from '../referrals/referrals.service';
+import { NotificationsService } from '../notifications/notifications.service';
+
+interface PaymentJobData {
+  eventId: string;
+  paymentIntentId: string;
+  eventType: string;
+}
 
 @Injectable()
 export class PaymentsService {
   private stripe: Stripe;
   private stripeWebhookSecret: string;
-  private processedEvents = new Set<string>();
+  private readonly logger = new Logger(PaymentsService.name);
 
   constructor(
     config: ConfigService,
     @InjectRepository(Payment) private paymentsRepo: Repository<Payment>,
+    @InjectRepository(Entry) private entriesRepo: Repository<Entry>,
     private usersService: UsersService,
-    private boardsService: BoardsService
+    private boardsService: BoardsService,
+    private queueService: QueueService,
+    private referralsService: ReferralsService,
+    private notificationsService: NotificationsService
   ) {
     this.stripe = new Stripe(config.get<string>('STRIPE_SECRET_KEY') || '', { apiVersion: '2024-06-20' });
     this.stripeWebhookSecret = config.get<string>('STRIPE_WEBHOOK_SECRET') || '';
   }
 
-  async createIntent(userId: string, boardId: string) {
+  async createIntent(userId: string, boardId: string, entryQuantity = 1) {
     const [user, board] = await Promise.all([this.usersService.findById(userId), this.boardsService.get(boardId)]);
 
     if (!user) {
@@ -35,19 +50,21 @@ export class PaymentsService {
       throw new BadRequestException('Board is not open for payments');
     }
 
+    const amount = Math.round(Number(board.pricePerEntry) * entryQuantity * 100);
     const intent = await this.stripe.paymentIntents.create({
-      amount: Math.round(Number(board.pricePerEntry) * 100),
+      amount,
       currency: 'usd',
-      metadata: { userId, boardId }
+      metadata: { userId, boardId, entryQuantity: String(entryQuantity) }
     });
 
     const payment = await this.paymentsRepo.save(
       this.paymentsRepo.create({
         user,
         board,
-        amount: board.pricePerEntry,
+        amount: Number(board.pricePerEntry) * entryQuantity,
         stripePaymentIntentId: intent.id,
-        status: PaymentStatus.PENDING
+        status: PaymentStatus.PENDING,
+        entryQuantity
       })
     );
 
@@ -70,37 +87,63 @@ export class PaymentsService {
       throw new BadRequestException('Invalid webhook signature');
     }
 
-    if (this.processedEvents.has(event.id)) {
-      return { ok: true, ignored: true };
-    }
-
-    this.processedEvents.add(event.id);
-
     const paymentIntentId = (event.data.object as Stripe.PaymentIntent)?.id;
     if (!paymentIntentId) {
       return { ok: true, ignored: true };
     }
 
-    if (event.type === 'payment_intent.succeeded') {
-      await this.updateStatusByIntentId(paymentIntentId, PaymentStatus.SUCCEEDED);
-      return { ok: true };
-    }
+    await this.queueService.add<PaymentJobData>(
+      PAYMENT_QUEUE,
+      'process-payment-event',
+      { eventId: event.id, paymentIntentId, eventType: event.type },
+      { jobId: `payment:${event.id}` }
+    );
 
-    if (event.type === 'payment_intent.payment_failed') {
-      await this.updateStatusByIntentId(paymentIntentId, PaymentStatus.FAILED);
-      return { ok: true };
-    }
-
-    return { ok: true, ignored: true };
+    return { ok: true, queued: true };
   }
 
-  async updateStatusByIntentId(intentId: string, status: PaymentStatus) {
+  async processPaymentJob(data: PaymentJobData) {
+    const { eventType, paymentIntentId, eventId } = data;
+
+    if (eventType === 'payment_intent.succeeded') {
+      const payment = await this.updateStatusByIntentId(paymentIntentId, PaymentStatus.SUCCEEDED, eventId);
+      this.logger.log(JSON.stringify({ event: 'payment_confirmed', paymentId: payment.id, paymentIntentId }));
+
+      await this.queueService.add(
+        ENTRY_QUEUE,
+        'create-entry',
+        { boardId: payment.boardId, userId: payment.userId, paymentId: payment.id, quantity: payment.entryQuantity || 1 },
+        { jobId: `entry:${payment.id}` }
+      );
+
+      const existingEntries = await this.entriesRepo.count({ where: { user: { id: payment.userId } } });
+      if (existingEntries === 0) {
+        const referral = await this.referralsService.findByReferredUser(payment.userId);
+        if (referral) {
+          await this.usersService.awardXp(referral.referrerUserId, 500);
+          await this.notificationsService.notify(referral.referrerUserId, 'REFERRAL_BONUS', 'Referral bonus +500 XP awarded!');
+          this.logger.log(JSON.stringify({ event: 'referral_reward', referrerUserId: referral.referrerUserId, referredUserId: payment.userId }));
+        }
+      }
+    }
+
+    if (eventType === 'payment_intent.payment_failed') {
+      await this.updateStatusByIntentId(paymentIntentId, PaymentStatus.FAILED, eventId);
+    }
+  }
+
+  async updateStatusByIntentId(intentId: string, status: PaymentStatus, webhookEventId?: string) {
     const payment = await this.paymentsRepo.findOne({ where: { stripePaymentIntentId: intentId }, relations: ['user', 'board'] });
     if (!payment) {
       throw new NotFoundException('Payment not found for payment intent');
     }
 
+    if (webhookEventId && payment.webhookEventId === webhookEventId) {
+      return payment;
+    }
+
     payment.status = status;
+    payment.webhookEventId = webhookEventId;
     return this.paymentsRepo.save(payment);
   }
 

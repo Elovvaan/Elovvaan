@@ -13,6 +13,11 @@ export class BoardsController {
     return this.boardsService.list();
   }
 
+  @Get('trending')
+  trending() {
+    return this.boardsService.trending();
+  }
+
   @Get(':id')
   get(@Param('id') id: string) {
     return this.boardsService.get(id);

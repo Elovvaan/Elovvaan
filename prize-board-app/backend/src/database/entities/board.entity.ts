@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Entry } from './entry.entity';
 import { Payment } from './payment.entity';
 import { Winner } from './winner.entity';
@@ -10,6 +10,8 @@ export enum BoardStatus {
 }
 
 @Entity('boards')
+@Index(['status'])
+@Index(['createdAt'])
 export class Board {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

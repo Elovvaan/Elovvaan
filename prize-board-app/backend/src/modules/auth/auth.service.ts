@@ -3,10 +3,15 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { LoginDto, RegisterDto } from './dto';
+import { ReferralsService } from '../referrals/referrals.service';
 
 @Injectable()
 export class AuthService {
-  constructor(private usersService: UsersService, private jwtService: JwtService) {}
+  constructor(
+    private usersService: UsersService,
+    private jwtService: JwtService,
+    private referralsService: ReferralsService
+  ) {}
 
   async register(dto: RegisterDto) {
     const existing = await this.usersService.findByEmail(dto.email);
@@ -15,6 +20,14 @@ export class AuthService {
     }
 
     const user = await this.usersService.create(dto.email, await bcrypt.hash(dto.password, 10));
+
+    if (dto.referralCode) {
+      const referrer = await this.usersService.findByReferralCode(dto.referralCode);
+      if (referrer && referrer.id !== user.id) {
+        await this.referralsService.createReferral(referrer.id, user.id);
+      }
+    }
+
     return this.issueToken(user.id, user.email, user.isAdmin);
   }
 

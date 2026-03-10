@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { Board, BoardStatus } from '../../database/entities/board.entity';
 import { Entry } from '../../database/entities/entry.entity';
 import { Notification } from '../../database/entities/notification.entity';
-import { Payment } from '../../database/entities/payment.entity';
+import { Payment, PaymentStatus } from '../../database/entities/payment.entity';
 import { User } from '../../database/entities/user.entity';
 import { Winner } from '../../database/entities/winner.entity';
 import { BoardsService } from '../boards/boards.service';
@@ -31,7 +31,39 @@ export class AdminService {
       this.winnersRepo.count()
     ]);
 
-    return { totalUsers, totalBoards, activeBoards, totalEntries, totalPayments, totalWinners };
+    const entriesPerBoard = await this.entriesRepo
+      .createQueryBuilder('entry')
+      .select('entry.boardId', 'boardId')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('entry.boardId')
+      .getRawMany();
+
+    const revenuePerBoard = await this.paymentsRepo
+      .createQueryBuilder('payment')
+      .select('payment.boardId', 'boardId')
+      .addSelect('SUM(payment.amount)', 'revenue')
+      .where('payment.status = :status', { status: PaymentStatus.SUCCEEDED })
+      .groupBy('payment.boardId')
+      .getRawMany();
+
+    const dailyActiveUsers = await this.entriesRepo
+      .createQueryBuilder('entry')
+      .select('COUNT(DISTINCT entry.userId)', 'dau')
+      .where("entry.created_at >= NOW() - INTERVAL '1 day'")
+      .getRawOne();
+
+    return {
+      totalUsers,
+      totalBoards,
+      activeBoards,
+      totalEntries,
+      totalPayments,
+      totalWinners,
+      dailyActiveUsers: Number(dailyActiveUsers?.dau || 0),
+      entriesPerBoard,
+      revenuePerBoard,
+      conversionRate: totalUsers ? totalPayments / totalUsers : 0
+    };
   }
 
   listEntries(boardId: string) {

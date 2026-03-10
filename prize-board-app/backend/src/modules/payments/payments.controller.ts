@@ -11,7 +11,7 @@ export class PaymentsController {
   @Post('create-intent')
   @UseGuards(JwtAuthGuard)
   createIntent(@Req() req: { user: { sub: string } }, @Body() dto: CreatePaymentIntentDto) {
-    return this.paymentsService.createIntent(req.user.sub, dto.boardId);
+    return this.paymentsService.createIntent(req.user.sub, dto.boardId, dto.entryQuantity || 1);
   }
 
   @Post('webhook')

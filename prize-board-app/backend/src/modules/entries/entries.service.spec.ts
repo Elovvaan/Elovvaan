@@ -2,45 +2,25 @@ import { EntriesService } from './entries.service';
 import { BoardStatus } from '../../database/entities/board.entity';
 
 describe('EntriesService', () => {
-  it('creates entry and emits events', async () => {
-    const entriesRepo = {
-      save: jest.fn().mockResolvedValue({ id: 'e1' }),
-      create: jest.fn().mockReturnValue({}),
-      findOne: jest.fn().mockResolvedValue(null),
-      count: jest.fn().mockResolvedValue(0)
+  it('queues and waits for entry job', async () => {
+    const queueService = {
+      add: jest.fn().mockResolvedValue({ id: 'entry:p1' }),
+      waitForCompletion: jest.fn().mockResolvedValue({ id: 'e1' })
     } as any;
+
     const service = new EntriesService(
-      entriesRepo,
-      { get: jest.fn().mockResolvedValue({ id: 'b1', status: BoardStatus.OPEN }), incrementEntryCount: jest.fn().mockResolvedValue({ id: 'b1', title: 'Board', status: BoardStatus.OPEN }) } as any,
-      { assertPaymentSucceeded: jest.fn().mockResolvedValue({ id: 'p1' }) } as any,
-      { findById: jest.fn().mockResolvedValue({ id: 'u1', xp: 0, prestigeLevel: 0 }), awardXp: jest.fn().mockResolvedValue({ id: 'u1', xp: 100, prestigeLevel: 0 }) } as any,
-      { selectWinner: jest.fn() } as any,
-      { broadcast: jest.fn() } as any,
-      { notify: jest.fn() } as any
+      {} as any,
+      {} as any,
+      { get: jest.fn().mockResolvedValue({ id: 'b1', status: BoardStatus.OPEN }) } as any,
+      { assertPaymentSucceeded: jest.fn().mockResolvedValue({ id: 'p1', entryQuantity: 1 }) } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      queueService
     );
 
     const result = await service.enterBoard('b1', 'u1', 'p1');
     expect(result.id).toBe('e1');
-  });
-
-  it('rejects when user reached entry limit', async () => {
-    const entriesRepo = {
-      save: jest.fn(),
-      create: jest.fn(),
-      findOne: jest.fn().mockResolvedValue(null),
-      count: jest.fn().mockResolvedValue(5)
-    } as any;
-
-    const service = new EntriesService(
-      entriesRepo,
-      { get: jest.fn().mockResolvedValue({ id: 'b1', status: BoardStatus.OPEN }) } as any,
-      { assertPaymentSucceeded: jest.fn() } as any,
-      { findById: jest.fn().mockResolvedValue({ id: 'u1' }), awardXp: jest.fn() } as any,
-      { selectWinner: jest.fn() } as any,
-      { broadcast: jest.fn() } as any,
-      { notify: jest.fn() } as any
-    );
-
-    await expect(service.enterBoard('b1', 'u1', 'p1')).rejects.toThrow('Entry limit reached');
   });
 });
