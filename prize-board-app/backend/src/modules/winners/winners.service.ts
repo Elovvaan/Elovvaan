@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { createHash } from 'crypto';
 import { Repository } from 'typeorm';
 import { Winner } from '../../database/entities/winner.entity';
 import { Entry } from '../../database/entities/entry.entity';
@@ -24,13 +25,19 @@ export class WinnersService {
       throw new NotFoundException('Board not found');
     }
 
-    const entries = await this.entriesRepo.find({ where: { board: { id: boardId } }, relations: ['user'] });
+    const entries = await this.entriesRepo.find({
+      where: { board: { id: boardId } },
+      relations: ['user'],
+      order: { createdAt: 'ASC', id: 'ASC' }
+    });
     if (entries.length === 0) {
       throw new BadRequestException('Cannot select winner without entries');
     }
 
-    const randomIndex = Math.floor(Math.random() * entries.length);
-    const selected = entries[randomIndex];
+    const closingTimestamp = entries.at(-1)?.createdAt.toISOString() ?? board.createdAt.toISOString();
+    const seed = createHash('sha256').update(`${boardId}:${closingTimestamp}`).digest('hex');
+    const winnerIndex = Number.parseInt(seed.slice(0, 12), 16) % entries.length;
+    const selected = entries[winnerIndex];
 
     return this.winnersRepo.save(this.winnersRepo.create({ board, user: selected.user, entry: selected }));
   }
