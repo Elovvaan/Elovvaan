@@ -1,40 +1,41 @@
-const feed = [
-  { at: '09:42', event: 'board_update', detail: 'Luxury Vacation Raffle reached 84/100 spots.' },
-  { at: '09:40', event: 'entry_added', detail: 'New paid entry from user #9f1a.' },
-  { at: '09:31', event: 'winner_selected', detail: 'Gaming Setup Giveaway winner published.' }
-];
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Layout } from '@/components/Layout';
+import { MetricCard } from '@/components/MetricCard';
+import { useSocket } from '@/hooks/useSocket';
 
 export default function DashboardPage() {
+  const [metrics, setMetrics] = useState<any>(null);
+  const feed = useSocket(['board_update', 'entry_added', 'board_full', 'winner_selected']);
+
+  useEffect(() => {
+    fetch('/api/admin/metrics').then((res) => res.json()).then(setMetrics);
+  }, []);
+
   return (
-    <main className="space-y-6">
-      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-      <section className="grid gap-4 md:grid-cols-4">
-        {[
-          ['Active Boards', '8'],
-          ['Entries Today', '142'],
-          ['Payments Settled', '$6,130'],
-          ['Push Delivered', '97.8%']
-        ].map(([label, value]) => (
-          <article key={label} className="rounded-lg bg-white p-4 shadow">
-            <p className="text-sm text-slate-500">{label}</p>
-            <p className="text-2xl font-semibold">{value}</p>
-          </article>
-        ))}
+    <Layout>
+      <h1 className="mb-4 text-2xl font-bold">Admin Dashboard</h1>
+      <section className="grid gap-4 md:grid-cols-3">
+        <MetricCard label="Total Users" value={metrics?.totalUsers ?? 0} />
+        <MetricCard label="Total Boards" value={metrics?.totalBoards ?? 0} />
+        <MetricCard label="Active Boards" value={metrics?.activeBoards ?? 0} />
+        <MetricCard label="Total Entries" value={metrics?.totalEntries ?? 0} />
+        <MetricCard label="Total Payments" value={metrics?.totalPayments ?? 0} />
+        <MetricCard label="Total Winners" value={metrics?.totalWinners ?? 0} />
       </section>
 
-      <section className="rounded-lg bg-white p-4 shadow">
-        <h2 className="text-lg font-semibold">Real-time Gateway Feed</h2>
-        <p className="text-sm text-slate-500">Socket events from the notifications gateway.</p>
+      <section className="mt-6 rounded-lg bg-white p-4 shadow">
+        <h2 className="text-lg font-semibold">Real-time Events</h2>
         <ul className="mt-3 space-y-2 text-sm">
-          {feed.map((item) => (
-            <li key={`${item.at}-${item.event}`} className="rounded border border-slate-200 p-2">
-              <span className="mr-2 font-mono text-slate-500">{item.at}</span>
+          {feed.map((item, index) => (
+            <li key={`${item.at}-${index}`} className="rounded border border-slate-200 p-2">
               <span className="mr-2 rounded bg-indigo-100 px-2 py-0.5 text-indigo-700">{item.event}</span>
-              <span>{item.detail}</span>
+              <span className="text-slate-600">{JSON.stringify(item.payload)}</span>
             </li>
           ))}
         </ul>
       </section>
-    </main>
+    </Layout>
   );
 }

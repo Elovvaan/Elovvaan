@@ -8,6 +8,7 @@ import { EntriesModule } from './modules/entries/entries.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { WinnersModule } from './modules/winners/winners.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { RedisService } from './common/redis.service';
 import { User } from './database/entities/user.entity';
 import { Board } from './database/entities/board.entity';
@@ -34,7 +35,8 @@ import { Notification } from './database/entities/notification.entity';
     EntriesModule,
     PaymentsModule,
     WinnersModule,
-    NotificationsModule
+    NotificationsModule,
+    AdminModule
   ],
   providers: [RedisService]
 })
