@@ -1,4 +1,4 @@
-import { CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, RelationId } from 'typeorm';
 import { Board } from './board.entity';
 import { User } from './user.entity';
 import { Payment } from './payment.entity';
@@ -8,14 +8,26 @@ export class Entry {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @ManyToOne(() => Board, (board) => board.entries)
-  board!: Board;
-
-  @ManyToOne(() => User, (user) => user.entries)
+  @ManyToOne(() => User, (user) => user.entries, { nullable: false })
+  @JoinColumn({ name: 'user_id' })
   user!: User;
 
-  @ManyToOne(() => Payment)
+  @RelationId((entry: Entry) => entry.user)
+  userId!: string;
+
+  @ManyToOne(() => Board, (board) => board.entries, { nullable: false })
+  @JoinColumn({ name: 'board_id' })
+  board!: Board;
+
+  @RelationId((entry: Entry) => entry.board)
+  boardId!: string;
+
+  @ManyToOne(() => Payment, (payment) => payment.entries, { nullable: false, eager: true })
+  @JoinColumn({ name: 'payment_id' })
   payment!: Payment;
+
+  @RelationId((entry: Entry) => entry.payment)
+  paymentId!: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

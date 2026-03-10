@@ -1,12 +1,12 @@
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Entry } from './entry.entity';
+import { Payment } from './payment.entity';
 import { Winner } from './winner.entity';
 
 export enum BoardStatus {
-  UPCOMING = 'upcoming',
-  LIVE = 'live',
-  FULL = 'full',
-  COMPLETED = 'completed'
+  OPEN = 'OPEN',
+  FULL = 'FULL',
+  CLOSED = 'CLOSED'
 }
 
 @Entity('boards')
@@ -17,22 +17,19 @@ export class Board {
   @Column()
   title!: string;
 
-  @Column({ name: 'prize_name' })
-  prizeName!: string;
+  @Column({ type: 'text' })
+  description!: string;
 
-  @Column({ name: 'prize_image_url' })
-  prizeImageUrl!: string;
+  @Column({ name: 'price_per_entry', type: 'decimal', precision: 10, scale: 2 })
+  pricePerEntry!: number;
 
-  @Column({ name: 'entry_price', type: 'decimal', precision: 10, scale: 2 })
-  entryPrice!: number;
+  @Column({ name: 'max_entries', type: 'int' })
+  maxEntries!: number;
 
-  @Column({ name: 'total_spots', type: 'int' })
-  totalSpots!: number;
+  @Column({ name: 'current_entries', type: 'int', default: 0 })
+  currentEntries!: number;
 
-  @Column({ name: 'spots_filled', type: 'int', default: 0 })
-  spotsFilled!: number;
-
-  @Column({ type: 'enum', enum: BoardStatus, default: BoardStatus.UPCOMING })
+  @Column({ type: 'enum', enum: BoardStatus, default: BoardStatus.OPEN })
   status!: BoardStatus;
 
   @CreateDateColumn({ name: 'created_at' })
@@ -40,6 +37,9 @@ export class Board {
 
   @OneToMany(() => Entry, (entry) => entry.board)
   entries!: Entry[];
+
+  @OneToMany(() => Payment, (payment) => payment.board)
+  payments!: Payment[];
 
   @OneToMany(() => Winner, (winner) => winner.board)
   winners!: Winner[];

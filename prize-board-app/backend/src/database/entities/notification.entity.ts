@@ -9,10 +9,10 @@ export class Notification {
   userId!: string;
 
   @Column()
-  title!: string;
+  type!: string;
 
-  @Column()
-  body!: string;
+  @Column({ type: 'text' })
+  message!: string;
 
   @Column({ default: false })
   read!: boolean;

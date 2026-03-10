@@ -1,21 +1,20 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { UsersService } from '../users/users.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CreatePaymentIntentDto } from './dto';
 
 @Controller('payments')
 export class PaymentsController {
-  constructor(private paymentsService: PaymentsService, private usersService: UsersService) {}
+  constructor(private paymentsService: PaymentsService) {}
 
   @Post('create-intent')
-  async createIntent(@Body() body: { userId: string; amount: number }) {
-    const user = await this.usersService.findById(body.userId);
-    if (!user) throw new Error('User not found');
-    return this.paymentsService.createIntent(user, body.amount);
+  @UseGuards(JwtAuthGuard)
+  createIntent(@Req() req: { user: { sub: string } }, @Body() dto: CreatePaymentIntentDto) {
+    return this.paymentsService.createIntent(req.user.sub, dto.boardId);
   }
 
   @Post('webhook')
-  async webhook(@Body() body: { paymentIntentId: string }) {
-    const payment = await this.paymentsService.markSucceeded(body.paymentIntentId);
-    return { ok: !!payment };
+  webhook(@Body() body: { type: string; data?: { object?: { id?: string } } }) {
+    return this.paymentsService.processWebhook(body.type, body.data?.object?.id || '');
   }
 }

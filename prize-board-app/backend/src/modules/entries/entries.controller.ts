@@ -1,12 +1,15 @@
-import { Body, Controller, Param, Post } from '@nestjs/common';
+import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { EntriesService } from './entries.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CreateEntryDto } from './dto';
 
 @Controller('boards/:id/enter')
 export class EntriesController {
   constructor(private entriesService: EntriesService) {}
 
   @Post()
-  enter(@Param('id') boardId: string, @Body() body: { userId: string; paymentId: string }) {
-    return this.entriesService.enterBoard(boardId, body.userId, body.paymentId);
+  @UseGuards(JwtAuthGuard)
+  enter(@Param('id') boardId: string, @Req() req: { user: { sub: string } }, @Body() dto: CreateEntryDto) {
+    return this.entriesService.enterBoard(boardId, req.user.sub, dto.paymentId);
   }
 }
