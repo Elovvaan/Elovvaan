@@ -49,4 +49,4 @@ npm test
 
 - `docs/architecture.md`
 - `docs/app-overview.md`
-
+- `docs/deploy-render.md` (online deployment with Render Blueprint)
