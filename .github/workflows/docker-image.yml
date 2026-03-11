@@ -15,4 +15,101 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-  run: docker build -f prize-board-app/backend/Dockerfile -t my-image-name:$(date +%s) prize-board-app/backend
+  run: name: Swipe2Win Monorepo CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/swipe2win
+
+jobs:
+  build-backend:
+    name: Build Backend Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build backend image
+        run: |
+          docker build \
+            -f prize-board-app/backend/Dockerfile \
+            -t $IMAGE_PREFIX-backend:latest \
+            prize-board-app/backend
+
+      - name: Push backend image
+        run: docker push $IMAGE_PREFIX-backend:latest
+
+  build-worker:
+    name: Build Worker Image
+    runs-on: ubuntu-latest
+    needs: build-backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build worker image
+        run: |
+          docker build \
+            -f prize-board-app/worker/Dockerfile \
+            -t $IMAGE_PREFIX-worker:latest \
+            prize-board-app/worker
+
+      - name: Push worker image
+        run: docker push $IMAGE_PREFIX-worker:latest
+
+  build-admin:
+    name: Build Admin Image
+    runs-on: ubuntu-latest
+    needs: build-worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build admin image
+        run: |
+          docker build \
+            -f prize-board-app/admin/Dockerfile \
+            -t $IMAGE_PREFIX-admin:latest \
+            prize-board-app/admin
+
+      - name: Push admin image
+        run: docker push $IMAGE_PREFIX-admin:latest
+
+  trigger-render:
+    name: Trigger Render Deploy
+    runs-on: ubuntu-latest
+    needs: build-admin
+    steps:
+      - name: Deploy via Render API
+        run: |
+          curl -X POST \
+            -H "Accept: application/json" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -d '' \
+            https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys
+
+
