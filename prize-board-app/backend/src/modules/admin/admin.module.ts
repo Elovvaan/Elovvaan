@@ -6,12 +6,14 @@ import { Notification } from '../../database/entities/notification.entity';
 import { Payment } from '../../database/entities/payment.entity';
 import { User } from '../../database/entities/user.entity';
 import { Winner } from '../../database/entities/winner.entity';
+import { CreatorBoard } from '../../database/entities/creator-board.entity';
+import { Payout } from '../../database/entities/payout.entity';
 import { BoardsModule } from '../boards/boards.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Board, Entry, Payment, Winner, Notification]), BoardsModule],
+  imports: [TypeOrmModule.forFeature([User, Board, Entry, Payment, Winner, Notification, CreatorBoard, Payout]), BoardsModule],
   controllers: [AdminController],
   providers: [AdminService]
 })

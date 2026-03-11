@@ -3,9 +3,9 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@
 @Injectable()
 export class AdminGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest<{ user?: { isAdmin?: boolean } }>();
+    const request = context.switchToHttp().getRequest<{ user?: { isAdmin?: boolean; role?: string } }>();
 
-    if (!request.user?.isAdmin) {
+    if (!request.user?.isAdmin && request.user?.role !== 'ADMIN') {
       throw new ForbiddenException('Admin access required');
     }
 

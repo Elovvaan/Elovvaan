@@ -2,12 +2,19 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Board, BoardStatus } from '../../database/entities/board.entity';
-import { CreateBoardDto } from './dto';
+import { CreateBoardDto, CreateCreatorBoardDto } from './dto';
 import { RedisService } from '../../common/redis.service';
+import { CreatorBoard } from '../../database/entities/creator-board.entity';
+import { User } from '../../database/entities/user.entity';
 
 @Injectable()
 export class BoardsService {
-  constructor(@InjectRepository(Board) private boardsRepo: Repository<Board>, private redis: RedisService) {}
+  constructor(
+    @InjectRepository(Board) private boardsRepo: Repository<Board>,
+    @InjectRepository(CreatorBoard) private creatorBoardsRepo: Repository<CreatorBoard>,
+    @InjectRepository(User) private usersRepo: Repository<User>,
+    private redis: RedisService
+  ) {}
 
   async list() {
     const cacheKey = 'boards:list';
@@ -40,6 +47,7 @@ export class BoardsService {
   async create(dto: CreateBoardDto) {
     const board = this.boardsRepo.create({
       ...dto,
+      pricePerEntry: dto.pricePerEntry,
       currentEntries: 0,
       status: BoardStatus.OPEN
     });
@@ -48,6 +56,40 @@ export class BoardsService {
     await this.redis.del('boards:list', 'boards:trending');
 
     return created;
+  }
+
+  async createCreatorBoard(creatorUserId: string, dto: CreateCreatorBoardDto) {
+    const creator = await this.usersRepo.findOne({ where: { id: creatorUserId } });
+    if (!creator) {
+      throw new NotFoundException('Creator not found');
+    }
+
+    const board = await this.boardsRepo.save(
+      this.boardsRepo.create({
+        title: dto.title,
+        description: dto.description,
+        pricePerEntry: dto.entryPrice,
+        maxEntries: dto.maxEntries,
+        currentEntries: 0,
+        prizeDescription: dto.prizeDescription,
+        creatorUser: creator,
+        status: BoardStatus.OPEN
+      })
+    );
+
+    const creatorBoard = await this.creatorBoardsRepo.save(
+      this.creatorBoardsRepo.create({
+        creatorUser: creator,
+        board,
+        entryPrice: dto.entryPrice,
+        maxEntries: dto.maxEntries,
+        platformFeePercent: dto.platformFeePercent,
+        prizeDescription: dto.prizeDescription
+      })
+    );
+
+    await this.redis.del('boards:list', 'boards:trending');
+    return creatorBoard;
   }
 
   async incrementEntryCount(boardId: string, quantity = 1) {
@@ -91,6 +133,10 @@ export class BoardsService {
 
     await this.redis.set(cacheKey, JSON.stringify(boards), 15);
     return boards;
+  }
+
+  creatorBoards(creatorUserId: string) {
+    return this.creatorBoardsRepo.find({ where: { creatorUser: { id: creatorUserId } }, relations: ['board'], order: { createdAt: 'DESC' } });
   }
 
   async closeBoard(boardId: string) {

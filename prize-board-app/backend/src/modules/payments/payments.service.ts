@@ -12,6 +12,7 @@ import { QueueService } from '../../common/queues/queue.service';
 import { ENTRY_QUEUE, PAYMENT_QUEUE } from '../../common/queues/queue.constants';
 import { ReferralsService } from '../referrals/referrals.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CreatorBoard } from '../../database/entities/creator-board.entity';
 
 interface PaymentJobData {
   eventId: string;
@@ -29,6 +30,7 @@ export class PaymentsService {
     config: ConfigService,
     @InjectRepository(Payment) private paymentsRepo: Repository<Payment>,
     @InjectRepository(Entry) private entriesRepo: Repository<Entry>,
+    @InjectRepository(CreatorBoard) private creatorBoardsRepo: Repository<CreatorBoard>,
     private usersService: UsersService,
     private boardsService: BoardsService,
     private queueService: QueueService,
@@ -39,8 +41,19 @@ export class PaymentsService {
     this.stripeWebhookSecret = config.get<string>('STRIPE_WEBHOOK_SECRET') || '';
   }
 
-  async createIntent(userId: string, boardId: string, entryQuantity = 1) {
-    const [user, board] = await Promise.all([this.usersService.findById(userId), this.boardsService.get(boardId)]);
+  async createIntent(
+    userId: string,
+    boardId: string,
+    entryQuantity = 1,
+    affiliateCode?: string,
+    paymentMethodFingerprint?: string,
+    ipAddress?: string
+  ) {
+    const [user, board, creatorBoard] = await Promise.all([
+      this.usersService.findById(userId),
+      this.boardsService.get(boardId),
+      this.creatorBoardsRepo.findOne({ where: { board: { id: boardId } }, relations: ['creatorUser'] })
+    ]);
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -50,21 +63,33 @@ export class PaymentsService {
       throw new BadRequestException('Board is not open for payments');
     }
 
-    const amount = Math.round(Number(board.pricePerEntry) * entryQuantity * 100);
+    const grossAmount = Number(board.pricePerEntry) * entryQuantity;
+    const platformFeePercent = Number(creatorBoard?.platformFeePercent || 0);
+    const platformRevenue = Number((grossAmount * (platformFeePercent / 100)).toFixed(2));
+    const affiliateCommission = affiliateCode && creatorBoard ? Number((grossAmount * 0.05).toFixed(2)) : 0;
+    const creatorRevenue = Number((grossAmount - platformRevenue - affiliateCommission).toFixed(2));
+
+    const amount = Math.round(grossAmount * 100);
     const intent = await this.stripe.paymentIntents.create({
       amount,
       currency: 'usd',
-      metadata: { userId, boardId, entryQuantity: String(entryQuantity) }
+      metadata: { userId, boardId, entryQuantity: String(entryQuantity), affiliateCode: affiliateCode || '' }
     });
 
     const payment = await this.paymentsRepo.save(
       this.paymentsRepo.create({
         user,
         board,
-        amount: Number(board.pricePerEntry) * entryQuantity,
+        amount: grossAmount,
         stripePaymentIntentId: intent.id,
         status: PaymentStatus.PENDING,
-        entryQuantity
+        entryQuantity,
+        platformRevenue,
+        creatorRevenue,
+        affiliateCommission,
+        affiliateCode,
+        paymentMethodFingerprint,
+        ipAddress
       })
     );
 

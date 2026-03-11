@@ -3,6 +3,12 @@ import { Entry } from './entry.entity';
 import { Payment } from './payment.entity';
 import { Winner } from './winner.entity';
 
+export enum UserRole {
+  USER = 'USER',
+  CREATOR = 'CREATOR',
+  ADMIN = 'ADMIN'
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -20,6 +26,9 @@ export class User {
 
   @Column({ name: 'is_admin', default: false })
   isAdmin!: boolean;
+
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+  role!: UserRole;
 
   @Column({ type: 'int', default: 0 })
   xp!: number;

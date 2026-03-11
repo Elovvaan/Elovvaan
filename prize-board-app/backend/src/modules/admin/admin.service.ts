@@ -1,13 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Board, BoardStatus } from '../../database/entities/board.entity';
-import { Entry } from '../../database/entities/entry.entity';
+import { Entry, EntryReviewStatus } from '../../database/entities/entry.entity';
 import { Notification } from '../../database/entities/notification.entity';
 import { Payment, PaymentStatus } from '../../database/entities/payment.entity';
 import { User } from '../../database/entities/user.entity';
 import { Winner } from '../../database/entities/winner.entity';
 import { BoardsService } from '../boards/boards.service';
+import { CreatorBoard } from '../../database/entities/creator-board.entity';
+import { Payout, PayoutStatus } from '../../database/entities/payout.entity';
 
 @Injectable()
 export class AdminService {
@@ -18,6 +20,8 @@ export class AdminService {
     @InjectRepository(Payment) private paymentsRepo: Repository<Payment>,
     @InjectRepository(Winner) private winnersRepo: Repository<Winner>,
     @InjectRepository(Notification) private notificationsRepo: Repository<Notification>,
+    @InjectRepository(CreatorBoard) private creatorBoardsRepo: Repository<CreatorBoard>,
+    @InjectRepository(Payout) private payoutsRepo: Repository<Payout>,
     private boardsService: BoardsService
   ) {}
 
@@ -31,27 +35,6 @@ export class AdminService {
       this.winnersRepo.count()
     ]);
 
-    const entriesPerBoard = await this.entriesRepo
-      .createQueryBuilder('entry')
-      .select('entry.boardId', 'boardId')
-      .addSelect('COUNT(*)', 'count')
-      .groupBy('entry.boardId')
-      .getRawMany();
-
-    const revenuePerBoard = await this.paymentsRepo
-      .createQueryBuilder('payment')
-      .select('payment.boardId', 'boardId')
-      .addSelect('SUM(payment.amount)', 'revenue')
-      .where('payment.status = :status', { status: PaymentStatus.SUCCEEDED })
-      .groupBy('payment.boardId')
-      .getRawMany();
-
-    const dailyActiveUsers = await this.entriesRepo
-      .createQueryBuilder('entry')
-      .select('COUNT(DISTINCT entry.userId)', 'dau')
-      .where("entry.created_at >= NOW() - INTERVAL '1 day'")
-      .getRawOne();
-
     return {
       totalUsers,
       totalBoards,
@@ -59,9 +42,6 @@ export class AdminService {
       totalEntries,
       totalPayments,
       totalWinners,
-      dailyActiveUsers: Number(dailyActiveUsers?.dau || 0),
-      entriesPerBoard,
-      revenuePerBoard,
       conversionRate: totalUsers ? totalPayments / totalUsers : 0
     };
   }
@@ -84,5 +64,103 @@ export class AdminService {
 
   closeBoard(boardId: string) {
     return this.boardsService.closeBoard(boardId);
+  }
+
+  creatorBoards(creatorUserId: string) {
+    return this.creatorBoardsRepo.find({ where: { creatorUser: { id: creatorUserId } }, relations: ['board'], order: { createdAt: 'DESC' } });
+  }
+
+  async creatorBoardStats(creatorUserId: string, boardId: string) {
+    const creatorBoard = await this.creatorBoardsRepo.findOne({ where: { creatorUser: { id: creatorUserId }, board: { id: boardId } } });
+    if (!creatorBoard) {
+      throw new BadRequestException('Board not found for creator');
+    }
+
+    const [entriesSold, paymentAgg, board] = await Promise.all([
+      this.entriesRepo.count({ where: { board: { id: boardId } } }),
+      this.paymentsRepo
+        .createQueryBuilder('p')
+        .select('COALESCE(SUM(p.amount),0)', 'boardRevenue')
+        .addSelect('COALESCE(SUM(p.platformRevenue),0)', 'platformRevenue')
+        .addSelect('COALESCE(SUM(p.creatorRevenue),0)', 'creatorRevenue')
+        .where('p.board_id = :boardId', { boardId })
+        .andWhere('p.status = :status', { status: PaymentStatus.SUCCEEDED })
+        .getRawOne<{ boardRevenue: string; platformRevenue: string; creatorRevenue: string }>(),
+      this.boardsRepo.findOne({ where: { id: boardId } })
+    ]);
+
+    const conversionRate = board?.maxEntries ? entriesSold / board.maxEntries : 0;
+
+    return {
+      boardId,
+      entriesSold,
+      boardRevenue: Number(paymentAgg?.boardRevenue || 0),
+      platformRevenue: Number(paymentAgg?.platformRevenue || 0),
+      creatorRevenue: Number(paymentAgg?.creatorRevenue || 0),
+      conversionRate
+    };
+  }
+
+  async creatorRevenue(creatorUserId: string) {
+    const rows = await this.paymentsRepo
+      .createQueryBuilder('p')
+      .innerJoin(CreatorBoard, 'cb', 'cb.board_id = p.board_id')
+      .select('COALESCE(SUM(p.amount),0)', 'boardRevenue')
+      .addSelect('COALESCE(SUM(p.platformRevenue),0)', 'platformRevenue')
+      .addSelect('COALESCE(SUM(p.creatorRevenue),0)', 'creatorRevenue')
+      .where('cb.creator_user_id = :creatorUserId', { creatorUserId })
+      .andWhere('p.status = :status', { status: PaymentStatus.SUCCEEDED })
+      .getRawOne<{ boardRevenue: string; platformRevenue: string; creatorRevenue: string }>();
+
+    return {
+      boardRevenue: Number(rows?.boardRevenue || 0),
+      platformRevenue: Number(rows?.platformRevenue || 0),
+      creatorRevenue: Number(rows?.creatorRevenue || 0)
+    };
+  }
+
+  requestPayout(creatorUserId: string, amount: number) {
+    return this.payoutsRepo.save(this.payoutsRepo.create({ creatorUserId, amount, status: PayoutStatus.PENDING }));
+  }
+
+  fraudEntries() {
+    return this.entriesRepo.find({ where: { reviewStatus: EntryReviewStatus.FLAGGED }, relations: ['user', 'board', 'payment'], order: { createdAt: 'DESC' } });
+  }
+
+  listPayouts() {
+    return this.payoutsRepo.find({ order: { createdAt: 'DESC' } });
+  }
+
+  async approvePayout(id: string) {
+    const payout = await this.payoutsRepo.findOne({ where: { id } });
+    if (!payout) {
+      throw new BadRequestException('Payout not found');
+    }
+    payout.status = PayoutStatus.APPROVED;
+    return this.payoutsRepo.save(payout);
+  }
+
+  async creatorMetrics() {
+    const revenuePerCreator = await this.paymentsRepo
+      .createQueryBuilder('p')
+      .innerJoin(CreatorBoard, 'cb', 'cb.board_id = p.board_id')
+      .select('cb.creator_user_id', 'creatorUserId')
+      .addSelect('COALESCE(SUM(p.creatorRevenue),0)', 'creatorRevenue')
+      .where('p.status = :status', { status: PaymentStatus.SUCCEEDED })
+      .groupBy('cb.creator_user_id')
+      .orderBy('creatorRevenue', 'DESC')
+      .getRawMany();
+
+    const topBoards = await this.paymentsRepo
+      .createQueryBuilder('p')
+      .select('p.board_id', 'boardId')
+      .addSelect('COALESCE(SUM(p.amount),0)', 'boardRevenue')
+      .where('p.status = :status', { status: PaymentStatus.SUCCEEDED })
+      .groupBy('p.board_id')
+      .orderBy('boardRevenue', 'DESC')
+      .limit(10)
+      .getRawMany();
+
+    return { revenuePerCreator, topBoards };
   }
 }
