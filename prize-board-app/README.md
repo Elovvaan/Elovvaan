@@ -50,3 +50,13 @@ npm test
 - `docs/architecture.md`
 - `docs/app-overview.md`
 - `docs/deploy-render.md` (online deployment with Render Blueprint)
+
+## Render deployment
+
+Use the **repository root** `render.yaml` when deploying with Render Blueprint. It points to:
+
+- `backend` Dockerfile at `prize-board-app/backend/Dockerfile`
+- `admin` Dockerfile at `prize-board-app/admin/Dockerfile`
+- `worker` Dockerfile at `prize-board-app/worker/Dockerfile`
+- `redis` and `postgres` infra resources
+

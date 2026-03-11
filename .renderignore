@@ -1,0 +1,9 @@
+# Keep Render blueprint discovery fast and avoid scanning unrelated root files.
+*
+!render.yaml
+!prize-board-app/**
+
+# Exclude local-only heavy folders that are never needed for Render Docker builds.
+prize-board-app/**/node_modules
+prize-board-app/mobile/.dart_tool
+prize-board-app/mobile/build
