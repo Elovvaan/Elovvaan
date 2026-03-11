@@ -28,7 +28,7 @@ export class AuthService {
       }
     }
 
-    return this.issueToken(user.id, user.email, user.isAdmin);
+    return this.issueToken(user.id, user.email, user.isAdmin, user.role);
   }
 
   async login(dto: LoginDto) {
@@ -36,10 +36,10 @@ export class AuthService {
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    return this.issueToken(user.id, user.email, user.isAdmin);
+    return this.issueToken(user.id, user.email, user.isAdmin, user.role);
   }
 
-  private issueToken(userId: string, email: string, isAdmin: boolean) {
-    return { accessToken: this.jwtService.sign({ sub: userId, email, isAdmin }) };
+  private issueToken(userId: string, email: string, isAdmin: boolean, role: string) {
+    return { accessToken: this.jwtService.sign({ sub: userId, email, isAdmin, role }) };
   }
 }

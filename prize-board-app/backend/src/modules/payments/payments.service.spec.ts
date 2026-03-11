@@ -9,6 +9,7 @@ describe('PaymentsService', () => {
       { count: jest.fn().mockResolvedValue(0) } as any,
       {} as any,
       {} as any,
+      { findOne: jest.fn() } as any,
       queueService,
       { findByReferredUser: jest.fn() } as any,
       { notify: jest.fn() } as any

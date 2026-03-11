@@ -10,7 +10,12 @@ describe('BoardsService', () => {
       save: jest.fn().mockImplementation((b) => Promise.resolve(b)),
       create: jest.fn()
     } as any;
-    const service = new BoardsService(repo, { get: jest.fn(), set: jest.fn(), del: jest.fn() } as any);
+    const service = new BoardsService(
+      repo,
+      { findOne: jest.fn() } as any,
+      { findOne: jest.fn() } as any,
+      { get: jest.fn(), set: jest.fn(), del: jest.fn() } as any
+    );
     const updated = await service.incrementEntryCount('b1');
     expect(updated.status).toBe(BoardStatus.FULL);
   });

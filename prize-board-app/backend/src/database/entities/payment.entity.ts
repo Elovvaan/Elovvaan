@@ -53,6 +53,24 @@ export class Payment {
 
   @Column({ type: 'enum', enum: PaymentStatus, default: PaymentStatus.PENDING })
   status!: PaymentStatus;
+  @Column({ name: 'affiliate_code', nullable: true })
+  affiliateCode?: string;
+
+  @Column({ name: 'affiliate_commission', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  affiliateCommission!: number;
+
+  @Column({ name: 'platform_revenue', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  platformRevenue!: number;
+
+  @Column({ name: 'creator_revenue', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  creatorRevenue!: number;
+
+  @Column({ name: 'payment_method_fingerprint', nullable: true })
+  paymentMethodFingerprint?: string;
+
+  @Column({ name: 'ip_address', nullable: true })
+  ipAddress?: string;
+
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

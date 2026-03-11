@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { BoardsService } from './boards.service';
-import { CreateBoardDto } from './dto';
+import { CreateBoardDto, CreateCreatorBoardDto } from './dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
+import { CreatorGuard } from '../../common/guards/creator.guard';
 
 @Controller('boards')
 export class BoardsController {
@@ -27,5 +28,11 @@ export class BoardsController {
   @UseGuards(JwtAuthGuard, AdminGuard)
   create(@Body() dto: CreateBoardDto) {
     return this.boardsService.create(dto);
+  }
+
+  @Post('creator')
+  @UseGuards(JwtAuthGuard, CreatorGuard)
+  createCreatorBoard(@Req() req: { user: { sub: string } }, @Body() dto: CreateCreatorBoardDto) {
+    return this.boardsService.createCreatorBoard(req.user.sub, dto);
   }
 }

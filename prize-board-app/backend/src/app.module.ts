@@ -16,6 +16,8 @@ import { Payment } from './database/entities/payment.entity';
 import { Winner } from './database/entities/winner.entity';
 import { Notification } from './database/entities/notification.entity';
 import { Referral } from './database/entities/referral.entity';
+import { CreatorBoard } from './database/entities/creator-board.entity';
+import { Payout } from './database/entities/payout.entity';
 import { QueueModule } from './common/queues/queue.module';
 import { ReferralsModule } from './modules/referrals/referrals.module';
 import { GlobalRateLimitMiddleware } from './common/rate-limit.middleware';
@@ -29,7 +31,7 @@ import { GlobalRateLimitMiddleware } from './common/rate-limit.middleware';
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
-        entities: [User, Board, Entry, Payment, Winner, Notification, Referral],
+        entities: [User, Board, Entry, Payment, Winner, Notification, Referral, CreatorBoard, Payout],
         synchronize: true
       })
     }),

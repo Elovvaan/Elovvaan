@@ -1,7 +1,8 @@
-import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, RelationId } from 'typeorm';
 import { Entry } from './entry.entity';
 import { Payment } from './payment.entity';
 import { Winner } from './winner.entity';
+import { User } from './user.entity';
 
 export enum BoardStatus {
   OPEN = 'OPEN',
@@ -33,6 +34,17 @@ export class Board {
 
   @Column({ type: 'enum', enum: BoardStatus, default: BoardStatus.OPEN })
   status!: BoardStatus;
+
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'creator_user_id' })
+  creatorUser?: User;
+
+  @RelationId((board: Board) => board.creatorUser)
+  creatorUserId?: string;
+
+  @Column({ name: 'prize_description', type: 'text', nullable: true })
+  prizeDescription?: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

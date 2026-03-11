@@ -1,8 +1,9 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { Entry } from '../../database/entities/entry.entity';
+import { Entry, EntryReviewStatus } from '../../database/entities/entry.entity';
 import { Board, BoardStatus } from '../../database/entities/board.entity';
+import { Payment } from '../../database/entities/payment.entity';
 import { BoardsService } from '../boards/boards.service';
 import { PaymentsService } from '../payments/payments.service';
 import { UsersService } from '../users/users.service';
@@ -86,9 +87,44 @@ export class EntriesService {
         throw new BadRequestException('Invalid user');
       }
 
+      const paymentRepo = manager.getRepository(Payment);
+      let fraudScore = 0;
+      if (payment.ipAddress) {
+        const sameIpCount = await paymentRepo.count({ where: { ipAddress: payment.ipAddress } });
+        if (sameIpCount >= 5) {
+          fraudScore += 40;
+        }
+      }
+
+      if (payment.paymentMethodFingerprint) {
+        const sameMethodCount = await paymentRepo.count({ where: { paymentMethodFingerprint: payment.paymentMethodFingerprint } });
+        if (sameMethodCount >= 3) {
+          fraudScore += 35;
+        }
+      }
+
+      const rapidAccounts = await manager
+        .createQueryBuilder()
+        .select('COUNT(*)', 'count')
+        .from('users', 'u')
+        .where("u.created_at >= NOW() - INTERVAL '15 minutes'")
+        .getRawOne<{ count: string }>();
+      if (Number(rapidAccounts?.count || 0) >= 10) {
+        fraudScore += 25;
+      }
+
+      const reviewStatus = fraudScore >= 60 ? EntryReviewStatus.FLAGGED : EntryReviewStatus.CLEAN;
+
       const entries: Entry[] = [];
       for (let i = 0; i < quantity; i += 1) {
-        const entry = entryRepo.create({ board, user, payment, externalReference: `${paymentId}:${i}` });
+        const entry = entryRepo.create({
+          board,
+          user,
+          payment,
+          externalReference: `${paymentId}:${i}`,
+          fraudScore,
+          reviewStatus
+        });
         entries.push(await entryRepo.save(entry));
       }
 

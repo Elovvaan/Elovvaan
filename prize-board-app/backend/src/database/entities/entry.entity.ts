@@ -13,6 +13,11 @@ import { Board } from './board.entity';
 import { User } from './user.entity';
 import { Payment } from './payment.entity';
 
+export enum EntryReviewStatus {
+  CLEAN = 'CLEAN',
+  FLAGGED = 'FLAGGED'
+}
+
 @Entity('entries')
 @Index(['boardId'])
 @Index(['userId'])
@@ -44,6 +49,12 @@ export class Entry {
 
   @Column({ name: 'external_reference', nullable: true })
   externalReference?: string;
+
+  @Column({ name: 'fraud_score', type: 'int', default: 0 })
+  fraudScore!: number;
+
+  @Column({ name: 'review_status', type: 'enum', enum: EntryReviewStatus, default: EntryReviewStatus.CLEAN })
+  reviewStatus!: EntryReviewStatus;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
