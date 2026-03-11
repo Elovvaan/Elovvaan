@@ -14,8 +14,10 @@ async function bootstrap() {
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  await app.listen(3000);
-  Logger.log(JSON.stringify({ event: 'backend_started', port: 3000 }), 'Bootstrap');
+  const port = Number(process.env.PORT) || 3000;
+
+  await app.listen(port);
+  Logger.log(JSON.stringify({ event: 'backend_started', port }), 'Bootstrap');
 }
 
 bootstrap();
