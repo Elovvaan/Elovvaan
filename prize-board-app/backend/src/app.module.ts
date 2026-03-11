@@ -21,6 +21,9 @@ import { Payout } from './database/entities/payout.entity';
 import { QueueModule } from './common/queues/queue.module';
 import { ReferralsModule } from './modules/referrals/referrals.module';
 import { GlobalRateLimitMiddleware } from './common/rate-limit.middleware';
+import { CreatorsModule } from './modules/creators/creators.module';
+import { BoardActivity } from './database/entities/board-activity.entity';
+import { UserDeviceToken } from './database/entities/user-device-token.entity';
 
 @Module({
   imports: [
@@ -31,7 +34,7 @@ import { GlobalRateLimitMiddleware } from './common/rate-limit.middleware';
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
-        entities: [User, Board, Entry, Payment, Winner, Notification, Referral, CreatorBoard, Payout],
+        entities: [User, Board, Entry, Payment, Winner, Notification, Referral, CreatorBoard, Payout, BoardActivity, UserDeviceToken],
         synchronize: true
       })
     }),
@@ -43,7 +46,8 @@ import { GlobalRateLimitMiddleware } from './common/rate-limit.middleware';
     WinnersModule,
     NotificationsModule,
     ReferralsModule,
-    AdminModule
+    AdminModule,
+    CreatorsModule
   ],
   providers: [GlobalRateLimitMiddleware]
 })

@@ -10,6 +10,12 @@ export enum BoardStatus {
   CLOSED = 'CLOSED'
 }
 
+export enum PrizeVerificationStatus {
+  PENDING = 'PENDING',
+  VERIFIED = 'VERIFIED',
+  REJECTED = 'REJECTED'
+}
+
 @Entity('boards')
 @Index(['status'])
 @Index(['createdAt'])
@@ -45,6 +51,32 @@ export class Board {
 
   @Column({ name: 'prize_description', type: 'text', nullable: true })
   prizeDescription?: string;
+
+  @Column({ name: 'prize_value', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  prizeValue?: number;
+
+  @Column({ name: 'prize_image_url', nullable: true })
+  prizeImageUrl?: string;
+
+  @Column({
+    name: 'verification_status',
+    type: 'enum',
+    enum: PrizeVerificationStatus,
+    default: PrizeVerificationStatus.PENDING
+  })
+  verificationStatus!: PrizeVerificationStatus;
+
+  @Column({ name: 'board_revenue', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  boardRevenue!: number;
+
+  @Column({ name: 'creator_share', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  creatorShare!: number;
+
+  @Column({ name: 'platform_share', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  platformShare!: number;
+
+  @Column({ name: 'escrow_released', default: false })
+  escrowReleased!: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

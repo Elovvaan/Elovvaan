@@ -6,6 +6,7 @@ import { RedisService } from '../../common/redis.service';
 export type NotificationEvent =
   | 'board_update'
   | 'entry_added'
+  | 'board_progress'
   | 'board_full'
   | 'winner_selected'
   | 'push_notification'

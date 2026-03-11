@@ -11,9 +11,10 @@ import { Payout } from '../../database/entities/payout.entity';
 import { BoardsModule } from '../boards/boards.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Board, Entry, Payment, Winner, Notification, CreatorBoard, Payout]), BoardsModule],
+  imports: [TypeOrmModule.forFeature([User, Board, Entry, Payment, Winner, Notification, CreatorBoard, Payout]), BoardsModule, NotificationsModule],
   controllers: [AdminController],
   providers: [AdminService]
 })

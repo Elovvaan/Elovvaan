@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Board, BoardStatus } from '../../database/entities/board.entity';
+import { Board, BoardStatus, PrizeVerificationStatus } from '../../database/entities/board.entity';
 import { Entry, EntryReviewStatus } from '../../database/entities/entry.entity';
 import { Notification } from '../../database/entities/notification.entity';
 import { Payment, PaymentStatus } from '../../database/entities/payment.entity';
@@ -10,6 +10,7 @@ import { Winner } from '../../database/entities/winner.entity';
 import { BoardsService } from '../boards/boards.service';
 import { CreatorBoard } from '../../database/entities/creator-board.entity';
 import { Payout, PayoutStatus } from '../../database/entities/payout.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AdminService {
@@ -22,7 +23,8 @@ export class AdminService {
     @InjectRepository(Notification) private notificationsRepo: Repository<Notification>,
     @InjectRepository(CreatorBoard) private creatorBoardsRepo: Repository<CreatorBoard>,
     @InjectRepository(Payout) private payoutsRepo: Repository<Payout>,
-    private boardsService: BoardsService
+    private boardsService: BoardsService,
+    private notificationsService: NotificationsService
   ) {}
 
   async metrics() {
@@ -119,9 +121,32 @@ export class AdminService {
     };
   }
 
-  requestPayout(creatorUserId: string, amount: number) {
+  async requestPayout(creatorUserId: string, amount: number) {
+    const releasable = await this.boardsRepo
+      .createQueryBuilder('b')
+      .select('COALESCE(SUM(b.creator_share),0)', 'creatorShare')
+      .where('b.creator_user_id = :creatorUserId', { creatorUserId })
+      .andWhere('b.status = :status', { status: BoardStatus.CLOSED })
+      .andWhere('b.escrow_released = true')
+      .getRawOne<{ creatorShare: string }>();
+
+    const alreadyRequested = await this.payoutsRepo
+      .createQueryBuilder('p')
+      .select('COALESCE(SUM(p.amount),0)', 'amount')
+      .where('p.creator_user_id = :creatorUserId', { creatorUserId })
+      .andWhere('p.status IN (:...statuses)', { statuses: [PayoutStatus.PENDING, PayoutStatus.APPROVED, PayoutStatus.PAID] })
+      .getRawOne<{ amount: string }>();
+
+    const available = Number(releasable?.creatorShare || 0) - Number(alreadyRequested?.amount || 0);
+    if (amount > available) throw new BadRequestException('Insufficient released escrow balance');
+
     return this.payoutsRepo.save(this.payoutsRepo.create({ creatorUserId, amount, status: PayoutStatus.PENDING }));
   }
+
+  async verifyBoardPrize(boardId: string, verificationStatus: PrizeVerificationStatus) {
+    return this.boardsService.setVerificationStatus(boardId, verificationStatus);
+  }
+
 
   fraudEntries() {
     return this.entriesRepo.find({ where: { reviewStatus: EntryReviewStatus.FLAGGED }, relations: ['user', 'board', 'payment'], order: { createdAt: 'DESC' } });
@@ -137,7 +162,9 @@ export class AdminService {
       throw new BadRequestException('Payout not found');
     }
     payout.status = PayoutStatus.APPROVED;
-    return this.payoutsRepo.save(payout);
+    const updated = await this.payoutsRepo.save(payout);
+    await this.notificationsService.notify(updated.creatorUserId, 'PAYOUT_APPROVED', `Payout ${updated.id} approved`);
+    return updated;
   }
 
   async creatorMetrics() {

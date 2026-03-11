@@ -4,6 +4,7 @@ import { DataSource, Repository } from 'typeorm';
 import { Entry, EntryReviewStatus } from '../../database/entities/entry.entity';
 import { Board, BoardStatus } from '../../database/entities/board.entity';
 import { Payment } from '../../database/entities/payment.entity';
+import { Payout, PayoutStatus } from '../../database/entities/payout.entity';
 import { BoardsService } from '../boards/boards.service';
 import { PaymentsService } from '../payments/payments.service';
 import { UsersService } from '../users/users.service';
@@ -34,6 +35,7 @@ export class EntriesService {
     private winnersService: WinnersService,
     private notificationsGateway: NotificationsGateway,
     private notificationsService: NotificationsService,
+    @InjectRepository(Payout) private payoutsRepo: Repository<Payout>,
     private queueService: QueueService
   ) {}
 
@@ -137,7 +139,9 @@ export class EntriesService {
 
       this.logger.log(JSON.stringify({ event: 'entry_created', boardId, userId, paymentId, quantity }));
       this.notificationsGateway.broadcast('entry_added', { boardId, entryId: entries[0]?.id, quantity });
+      this.notificationsGateway.broadcast('board_progress', { boardId, currentEntries: updatedBoard.currentEntries, maxEntries: updatedBoard.maxEntries });
       this.notificationsGateway.broadcast('board_update', updatedBoard);
+      await this.boardsService.recordActivity(boardId, 'entry_added', { userId, quantity, currentEntries: updatedBoard.currentEntries });
       this.notificationsGateway.broadcast('xp_updated', {
         userId,
         xp: userAfterEntry.xp,
@@ -161,14 +165,23 @@ export class EntriesService {
     const closedBoard = await this.boardsService.closeBoard(boardId);
     const winnerAfterAward = await this.usersService.awardXp(winner.userId, 500);
 
-    await this.notificationsService.notify(winner.userId, 'WINNER_SELECTED', `You won ${closedBoard.title}`);
+    await this.notificationsService.notify(winner.userId, 'WINNER_ANNOUNCED', `You won ${closedBoard.title}`);
     this.notificationsGateway.broadcast('winner_selected', winner);
+    await this.boardsService.recordActivity(boardId, 'winner_selected', { winnerUserId: winner.userId, entryId: winner.entryId });
     this.notificationsGateway.broadcast('board_update', closedBoard);
     this.notificationsGateway.broadcast('xp_updated', {
       userId: winner.userId,
       xp: winnerAfterAward.xp,
       prestigeLevel: winnerAfterAward.prestigeLevel
     });
+    if (closedBoard.creatorUserId && !closedBoard.escrowReleased && Number(closedBoard.creatorShare || 0) > 0) {
+      await this.payoutsRepo.save(
+        this.payoutsRepo.create({ creatorUserId: closedBoard.creatorUserId, amount: closedBoard.creatorShare, status: PayoutStatus.APPROVED })
+      );
+      await this.boardsService.markEscrowReleased(boardId);
+      await this.notificationsService.notify(closedBoard.creatorUserId, 'PAYOUT_APPROVED', `Escrow released for ${closedBoard.title}`);
+    }
+
     this.logger.log(JSON.stringify({ event: 'winner_selected', boardId, winnerUserId: winner.userId }));
   }
 }

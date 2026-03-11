@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import Stripe from 'stripe';
 import { Repository } from 'typeorm';
-import { BoardStatus } from '../../database/entities/board.entity';
+import { BoardStatus, PrizeVerificationStatus } from '../../database/entities/board.entity';
 import { Payment, PaymentStatus } from '../../database/entities/payment.entity';
 import { Entry } from '../../database/entities/entry.entity';
 import { UsersService } from '../users/users.service';
@@ -59,7 +59,7 @@ export class PaymentsService {
       throw new NotFoundException('User not found');
     }
 
-    if (board.status !== BoardStatus.OPEN) {
+    if (board.status !== BoardStatus.OPEN || board.verificationStatus !== PrizeVerificationStatus.VERIFIED) {
       throw new BadRequestException('Board is not open for payments');
     }
 
@@ -133,6 +133,7 @@ export class PaymentsService {
     if (eventType === 'payment_intent.succeeded') {
       const payment = await this.updateStatusByIntentId(paymentIntentId, PaymentStatus.SUCCEEDED, eventId);
       this.logger.log(JSON.stringify({ event: 'payment_confirmed', paymentId: payment.id, paymentIntentId }));
+      await this.boardsService.applyEscrowRevenue(payment.boardId, Number(payment.amount), Number(payment.creatorRevenue), Number(payment.platformRevenue));
 
       await this.queueService.add(
         ENTRY_QUEUE,
@@ -146,7 +147,7 @@ export class PaymentsService {
         const referral = await this.referralsService.findByReferredUser(payment.userId);
         if (referral) {
           await this.usersService.awardXp(referral.referrerUserId, 500);
-          await this.notificationsService.notify(referral.referrerUserId, 'REFERRAL_BONUS', 'Referral bonus +500 XP awarded!');
+          await this.notificationsService.notify(referral.referrerUserId, 'REFERRAL_REWARD', 'Referral bonus +500 XP awarded!');
           this.logger.log(JSON.stringify({ event: 'referral_reward', referrerUserId: referral.referrerUserId, referredUserId: payment.userId }));
         }
       }
