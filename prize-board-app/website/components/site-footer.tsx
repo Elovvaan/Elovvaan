@@ -1,10 +1,10 @@
 import Link from 'next/link';
 
 const legalLinks = [
-  { href: '/legal/tos', label: 'Terms of Service' },
-  { href: '/legal/privacy', label: 'Privacy Policy' },
-  { href: '/legal/sweepstakes-rules', label: 'Sweepstakes Rules' },
-  { href: '/legal/amoe', label: 'AMOE' }
+  { href: '/official-rules', label: 'Official Rules' },
+  { href: '/free-entry', label: 'Free Entry' },
+  { href: '/terms', label: 'Terms' },
+  { href: '/privacy', label: 'Privacy' }
 ];
 
 export function SiteFooter() {

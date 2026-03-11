@@ -3,8 +3,8 @@ import { PageHero } from '@/components/page-hero';
 const steps = [
   'Create your Swipe2Win profile and choose your first game mode.',
   'Complete swipe missions to earn entries and XP.',
-  'Watch your ranking move on the live prize boards.',
-  'Enter sweepstakes draws and claim rewards in-app.'
+  'Watch your ranking move on live prize promotion boards.',
+  'Submit promotion entries and claim rewards in-app.'
 ];
 
 export default function HowItWorksPage() {
