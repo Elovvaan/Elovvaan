@@ -3,6 +3,7 @@ import { AdminGuard } from '../../common/guards/admin.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminService } from './admin.service';
 import { CreatorGuard } from '../../common/guards/creator.guard';
+import { PrizeVerificationStatus } from '../../database/entities/board.entity';
 
 @Controller()
 export class AdminController {
@@ -18,6 +19,13 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, AdminGuard)
   listEntries(@Param('id') id: string) {
     return this.adminService.listEntries(id);
+  }
+
+
+  @Post('admin/boards/:id/verification')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  verifyBoardPrize(@Param('id') id: string, @Body() body: { verificationStatus: PrizeVerificationStatus }) {
+    return this.adminService.verifyBoardPrize(id, body.verificationStatus);
   }
 
   @Patch('admin/boards/:id/close')

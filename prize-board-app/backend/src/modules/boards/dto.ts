@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, IsUrl, Max, Min } from 'class-validator';
 
 export class CreateBoardDto {
   @IsString()
@@ -18,7 +18,16 @@ export class CreateBoardDto {
   @IsOptional()
   @IsString()
   prizeDescription?: string;
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  prizeValue?: number;
+
+  @IsOptional()
+  @IsUrl()
+  prizeImageUrl?: string;
 }
+
 
 export class CreateCreatorBoardDto {
   @IsString()
@@ -42,4 +51,13 @@ export class CreateCreatorBoardDto {
 
   @IsString()
   prizeDescription!: string;
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  prizeValue?: number;
+
+  @IsOptional()
+  @IsUrl()
+  prizeImageUrl?: string;
 }
+

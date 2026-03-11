@@ -17,6 +17,7 @@ describe('EntriesService', () => {
       {} as any,
       {} as any,
       {} as any,
+      {} as any,
       queueService
     );
 

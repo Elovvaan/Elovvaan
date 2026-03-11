@@ -19,6 +19,11 @@ export class BoardsController {
     return this.boardsService.trending();
   }
 
+  @Get(':id/activity')
+  activity(@Param('id') id: string) {
+    return this.boardsService.activity(id);
+  }
+
   @Get(':id')
   get(@Param('id') id: string) {
     return this.boardsService.get(id);
