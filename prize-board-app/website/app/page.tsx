@@ -1,17 +1,19 @@
 import Link from 'next/link';
 import { PageHero } from '@/components/page-hero';
+import { ComplianceNotice } from '@/components/ComplianceNotice';
 
 export default function HomePage() {
   return (
     <div>
       <PageHero
         title="Swipe2Win: Where every swipe can unlock a win."
-        subtitle="Compete on live prize boards, stack XP, and climb to prestige tiers while entering free-to-play sweepstakes built for mobile-first players."
+        subtitle="Join live prize promotions, stack XP, and climb prestige tiers while earning promotion entries in a mobile-first sweepstakes platform."
       />
+      <ComplianceNotice />
       <section className="grid gap-6 md:grid-cols-3">
         {[
           ['Instant Challenges', 'Complete daily swipe challenges and earn entries in under 60 seconds.'],
-          ['Live Prize Boards', 'Track your rank in real time against your city, region, and national board.'],
+          ['Live Prize Promotions', 'Track your ranking in real time across city, regional, and national prize promotions.'],
           ['Fair & Transparent', 'Clear legal framework, no hidden odds, and player-first rules.']
         ].map(([title, desc]) => (
           <article key={title} className="rounded-xl border border-slate-200 p-5 shadow-sm">

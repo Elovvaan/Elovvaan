@@ -5,13 +5,13 @@ export default function PrizeBoardsPage() {
     <div>
       <PageHero
         title="Prize Boards"
-        subtitle="Compete in themed boards with changing rewards, seasonal bonuses, and boosted entry windows."
+        subtitle="Compete in themed prize promotions with changing rewards, seasonal bonuses, and boosted promotion entry windows."
       />
       <div className="grid gap-4 md:grid-cols-3">
         {[
-          ['Rookie Board', 'Great for new players. Smaller pools, faster payouts.'],
-          ['City Clash Board', 'Compete by location and represent your city every week.'],
-          ['Elite Board', 'High XP requirement, high-value rewards, premium drops.']
+          ['Rookie Promotion', 'Great for new players. Smaller prize pools and faster prize processing.'],
+          ['City Clash Promotion', 'Compete by location and represent your city each week.'],
+          ['Elite Promotion', 'High XP requirement, high-value rewards, and premium drops.']
         ].map(([name, desc]) => (
           <div key={name} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-xl font-semibold text-brand-700">{name}</h2>
