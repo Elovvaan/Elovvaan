@@ -26,6 +26,15 @@ services:
       - postgres
       - redis
 
+  worker:
+    build: ../backend
+    env_file:
+      - ../backend/.env.example
+    command: npm run start:worker
+    depends_on:
+      - postgres
+      - redis
+
   admin:
     image: node:20-alpine
     working_dir: /app

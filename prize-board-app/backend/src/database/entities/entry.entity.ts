@@ -1,9 +1,22 @@
-import { CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, RelationId } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  RelationId,
+  Unique
+} from 'typeorm';
 import { Board } from './board.entity';
 import { User } from './user.entity';
 import { Payment } from './payment.entity';
 
 @Entity('entries')
+@Index(['boardId'])
+@Index(['userId'])
+@Unique('uq_entries_external_ref', ['externalReference'])
 export class Entry {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -28,6 +41,9 @@ export class Entry {
 
   @RelationId((entry: Entry) => entry.payment)
   paymentId!: string;
+
+  @Column({ name: 'external_reference', nullable: true })
+  externalReference?: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

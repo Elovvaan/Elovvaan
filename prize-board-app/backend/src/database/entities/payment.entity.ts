@@ -1,4 +1,14 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, RelationId } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  RelationId
+} from 'typeorm';
 import { User } from './user.entity';
 import { Board } from './board.entity';
 import { Entry } from './entry.entity';
@@ -10,6 +20,7 @@ export enum PaymentStatus {
 }
 
 @Entity('payments')
+@Index(['boardId'])
 export class Payment {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -28,8 +39,14 @@ export class Payment {
   @RelationId((payment: Payment) => payment.board)
   boardId!: string;
 
-  @Column({ name: 'stripe_payment_intent_id' })
+  @Column({ name: 'stripe_payment_intent_id', unique: true })
   stripePaymentIntentId!: string;
+
+  @Column({ name: 'webhook_event_id', nullable: true, unique: true })
+  webhookEventId?: string;
+
+  @Column({ name: 'entry_quantity', type: 'int', default: 1 })
+  entryQuantity!: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   amount!: number;

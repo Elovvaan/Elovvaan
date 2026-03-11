@@ -1,4 +1,4 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
 
@@ -10,5 +10,10 @@ export class UsersController {
   @Get('me')
   me(@Req() req: { user: { sub: string } }) {
     return this.usersService.findById(req.user.sub);
+  }
+
+  @Get('leaderboard')
+  leaderboard(@Query('limit') limit?: string) {
+    return this.usersService.leaderboard(limit ? Number(limit) : 50);
   }
 }

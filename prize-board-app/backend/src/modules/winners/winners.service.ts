@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash } from 'crypto';
 import { Repository } from 'typeorm';
@@ -8,6 +8,8 @@ import { Board } from '../../database/entities/board.entity';
 
 @Injectable()
 export class WinnersService {
+  private readonly logger = new Logger(WinnersService.name);
+
   constructor(
     @InjectRepository(Winner) private winnersRepo: Repository<Winner>,
     @InjectRepository(Entry) private entriesRepo: Repository<Entry>,
@@ -39,7 +41,9 @@ export class WinnersService {
     const winnerIndex = Number.parseInt(seed.slice(0, 12), 16) % entries.length;
     const selected = entries[winnerIndex];
 
-    return this.winnersRepo.save(this.winnersRepo.create({ board, user: selected.user, entry: selected }));
+    const winner = await this.winnersRepo.save(this.winnersRepo.create({ board, user: selected.user, entry: selected }));
+    this.logger.log(JSON.stringify({ event: 'winner_selected', boardId, winnerUserId: winner.userId }));
+    return winner;
   }
 
   findByBoard(boardId: string) {
