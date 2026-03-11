@@ -1,0 +1,83 @@
+services:
+  - type: web
+    name: prize-board-backend
+    runtime: docker
+    plan: free
+    dockerContext: prize-board-app/backend
+    dockerfilePath: prize-board-app/backend/Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: prize-board-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: prize-board-redis
+          type: redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: FIREBASE_SERVER_KEY
+        sync: false
+
+  - type: worker
+    name: prize-board-worker
+    runtime: docker
+    plan: free
+    dockerContext: prize-board-app/backend
+    dockerfilePath: prize-board-app/worker/Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: prize-board-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: prize-board-redis
+          type: redis
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: FIREBASE_SERVER_KEY
+        sync: false
+
+  - type: web
+    name: prize-board-admin
+    runtime: docker
+    plan: free
+    dockerContext: prize-board-app/admin
+    dockerfilePath: prize-board-app/admin/Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: API_BASE_URL
+        value: https://prize-board-backend.onrender.com/api
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://prize-board-backend.onrender.com/api
+
+  - type: redis
+    name: prize-board-redis
+    ipAllowList: []
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: prize-board-postgres
+    databaseName: prize_board
+    plan: free
