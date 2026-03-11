@@ -20,7 +20,6 @@ export enum PaymentStatus {
 }
 
 @Entity('payments')
-@Index(['boardId'])
 export class Payment {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
