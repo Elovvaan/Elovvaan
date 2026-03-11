@@ -13,8 +13,9 @@ class Swipe2WinApp extends StatelessWidget {
     return MaterialApp(
       title: 'Swipe2Win',
       theme: ThemeData(useMaterial3: true),
-      initialRoute: '/login',
+      initialRoute: '/splash',
       routes: {
+        '/splash': (_) => const SplashScreen(),
         '/login': (_) => const LoginScreen(),
         '/register': (_) => const RegisterScreen(),
         '/home': (_) => const HomeScreen(),
