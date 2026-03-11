@@ -6,3 +6,4 @@ export 'enter_board_screen.dart';
 export 'winner_screen.dart';
 export 'profile_screen.dart';
 export 'notifications_screen.dart';
+export 'splash_screen.dart';
