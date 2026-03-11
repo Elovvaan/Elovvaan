@@ -15,6 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
+      run: docker build -f prize-board-app/backend/Dockerfile -t my-image-name:$(date +%s) prize-board-app/backend
   run: name: Swipe2Win Monorepo CI/CD
 
 on:
