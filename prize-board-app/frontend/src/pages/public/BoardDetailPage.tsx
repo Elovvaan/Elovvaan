@@ -1,55 +1,28 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Button } from '../../components/Button';
+import { Link, useParams } from 'react-router-dom';
 import { Card } from '../../components/Card';
+import { PageShell } from '../../components/PageShell';
 import { boardService } from '../../services/boardService';
-import { paymentService } from '../../services/paymentService';
 import type { Board } from '../../types';
 
 export const BoardDetailPage = () => {
-  const { id = '' } = useParams();
-  const navigate = useNavigate();
+  const { boardId = '' } = useParams();
   const [board, setBoard] = useState<Board | null>(null);
-  const [qty, setQty] = useState(1);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    boardService.getBoard(id).then(setBoard).catch(() => setBoard(null));
-  }, [id]);
+    boardService.getBoard(boardId).then(setBoard).catch(() => setBoard(null));
+  }, [boardId]);
 
-  const handleBuy = async () => {
-    setLoading(true);
-    try {
-      const res = await paymentService.createIntent({ boardId: id, quantity: qty });
-      navigate(`/payment-confirmation?paymentId=${res.paymentId}&clientSecret=${res.clientSecret}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!board) return <p className="text-slate-300">Board not found.</p>;
+  if (!board) return <PageShell title="Board" subtitle="Loading board details..."><Card>Board not found.</Card></PageShell>;
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <img src={board.prizeImage} alt={board.title} className="w-full rounded-2xl object-cover" />
+    <PageShell title={board.title} subtitle={board.description}>
       <Card>
-        <h1 className="text-2xl font-bold">{board.title}</h1>
-        <p className="mt-3 text-slate-300">{board.description}</p>
-        <p className="mt-4 text-brand-500">${board.pricePerEntry.toFixed(2)} per entry</p>
-        <p className="text-sm text-slate-400">{board.totalEntries} total entries</p>
-        <div className="mt-4 flex items-center gap-2">
-          <input
-            type="number"
-            min={1}
-            value={qty}
-            onChange={(e) => setQty(Number(e.target.value))}
-            className="w-24 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2"
-          />
-          <Button onClick={handleBuy} disabled={loading}>
-            {loading ? 'Creating payment...' : 'Buy entries'}
-          </Button>
-        </div>
+        <p className="text-sm">Prize: <strong>{board.prize}</strong></p>
+        <p className="text-sm">Entry Price: <strong>${board.entryPrice}</strong></p>
+        <p className="text-sm">Spots: <strong>{board.soldSpots}/{board.totalSpots}</strong></p>
+        <Link to={`/boards/${board.id}/enter`} className="mt-4 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white">Buy Entries</Link>
       </Card>
-    </div>
+    </PageShell>
   );
 };

@@ -1,11 +1,14 @@
 const TOKEN_KEY = 'swipe2win_token';
-const ROLE_KEY = 'swipe2win_role';
+const USER_KEY = 'swipe2win_user';
 
 export const storage = {
   getToken: () => localStorage.getItem(TOKEN_KEY),
   setToken: (token: string) => localStorage.setItem(TOKEN_KEY, token),
   clearToken: () => localStorage.removeItem(TOKEN_KEY),
-  getRole: () => localStorage.getItem(ROLE_KEY),
-  setRole: (role: string) => localStorage.setItem(ROLE_KEY, role),
-  clearRole: () => localStorage.removeItem(ROLE_KEY),
+  getUser: () => {
+    const value = localStorage.getItem(USER_KEY);
+    return value ? JSON.parse(value) : null;
+  },
+  setUser: (user: unknown) => localStorage.setItem(USER_KEY, JSON.stringify(user)),
+  clearUser: () => localStorage.removeItem(USER_KEY),
 };

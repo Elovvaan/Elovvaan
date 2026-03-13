@@ -4,15 +4,13 @@ import { Card } from './Card';
 
 export const BoardCard = ({ board }: { board: Board }) => (
   <Card>
-    <img src={board.prizeImage} alt={board.title} className="h-44 w-full rounded-xl object-cover" />
-    <h3 className="mt-3 text-lg font-semibold text-white">{board.title}</h3>
-    <p className="mt-1 line-clamp-2 text-sm text-slate-300">{board.description}</p>
-    <div className="mt-3 flex items-center justify-between text-sm">
-      <span className="text-brand-500">${board.pricePerEntry.toFixed(2)} / entry</span>
-      <span className="text-slate-400">{board.totalEntries} spots</span>
+    <p className="text-xs uppercase tracking-wide text-brand-600">Prize Board</p>
+    <h3 className="mt-1 text-lg font-semibold">{board.title}</h3>
+    <p className="mt-1 text-sm text-slate-500">{board.prize}</p>
+    <p className="mt-2 text-sm">${board.entryPrice} / entry</p>
+    <div className="mt-4 flex items-center justify-between">
+      <span className="text-xs text-slate-500">{board.soldSpots}/{board.totalSpots} sold</span>
+      <Link to={`/boards/${board.id}`} className="text-sm font-semibold text-brand-700">View</Link>
     </div>
-    <Link to={`/boards/${board.id}`} className="mt-4 inline-block text-sm font-semibold text-brand-500 hover:text-brand-400">
-      View board →
-    </Link>
   </Card>
 );

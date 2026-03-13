@@ -1,18 +1,10 @@
-import { useEffect, useState } from 'react';
 import { Card } from '../../components/Card';
-import { userService } from '../../services/userService';
+import { PageShell } from '../../components/PageShell';
 
-export const AdminEntryLogsPage = () => {
-  const [logs, setLogs] = useState<Record<string, unknown>[]>([]);
-
-  useEffect(() => {
-    userService.entryLogs().then((d) => setLogs(d as Record<string, unknown>[]));
-  }, []);
-
-  return (
+export const AdminEntryLogsPage = () => (
+  <PageShell title="Entry Logs" subtitle="Track all board entries">
     <Card>
-      <h1 className="text-2xl font-bold">Entry Logs</h1>
-      <pre className="mt-3 overflow-x-auto text-xs text-slate-300">{JSON.stringify(logs, null, 2)}</pre>
+      <p className="text-sm">Connect this page to <code>/admin/entries/logs</code> for operational reporting.</p>
     </Card>
-  );
-};
+  </PageShell>
+);

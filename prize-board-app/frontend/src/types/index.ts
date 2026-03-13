@@ -1,42 +1,23 @@
-export type Role = 'user' | 'admin';
+export type Role = 'guest' | 'user' | 'admin';
+
+export interface Board {
+  id: string;
+  title: string;
+  prize: string;
+  description: string;
+  entryPrice: number;
+  totalSpots: number;
+  soldSpots: number;
+  closesAt: string;
+  imageUrl?: string;
+}
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: Role;
   xp: number;
-}
-
-export interface Board {
-  id: string;
-  title: string;
-  description: string;
-  prizeImage: string;
-  pricePerEntry: number;
-  totalEntries: number;
-  active: boolean;
-}
-
-export interface Entry {
-  id: string;
-  boardId: string;
-  boardTitle: string;
-  quantity: number;
-  createdAt: string;
-}
-
-export interface Win {
-  id: string;
-  boardTitle: string;
-  prize: string;
-  wonAt: string;
-}
-
-export interface NotificationItem {
-  id: string;
-  title: string;
-  body: string;
-  read: boolean;
-  createdAt: string;
+  wins: number;
+  entries: number;
+  role: Exclude<Role, 'guest'>;
 }

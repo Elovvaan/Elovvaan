@@ -1,18 +1,8 @@
-import clsx from 'clsx';
+import type { ButtonHTMLAttributes } from 'react';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary';
-}
-
-export const Button = ({ className, variant = 'primary', ...props }: ButtonProps) => (
+export const Button = ({ className = '', ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
   <button
-    className={clsx(
-      'rounded-xl px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60',
-      variant === 'primary'
-        ? 'bg-brand-600 text-white hover:bg-brand-700'
-        : 'border border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700',
-      className,
-    )}
+    className={`w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60 ${className}`}
     {...props}
   />
 );

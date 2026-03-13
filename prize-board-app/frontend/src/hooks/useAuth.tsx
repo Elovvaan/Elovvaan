@@ -1,65 +1,60 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import { authService } from '../services/authService';
 import { storage } from '../services/storage';
-import type { User } from '../types';
+import type { Role, User } from '../types';
 
 interface AuthContextValue {
   user: User | null;
-  loading: boolean;
-  login: (token: string, user: User) => void;
+  role: Role;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (name: string, email: string, password: string) => Promise<void>;
+  adminLogin: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(storage.getUser());
 
-  useEffect(() => {
-    const init = async () => {
-      if (!storage.getToken()) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const currentUser = await authService.profile();
-        setUser(currentUser);
-      } catch {
-        storage.clearToken();
-        storage.clearRole();
-      } finally {
-        setLoading(false);
-      }
-    };
-    void init();
-  }, []);
+  const saveSession = (nextUser: User, token: string) => {
+    storage.setToken(token);
+    storage.setUser(nextUser);
+    setUser(nextUser);
+  };
 
-  const value = useMemo(
-    () => ({
-      user,
-      loading,
-      login: (token: string, nextUser: User) => {
-        storage.setToken(token);
-        storage.setRole(nextUser.role);
-        setUser(nextUser);
-      },
-      logout: () => {
-        storage.clearToken();
-        storage.clearRole();
-        setUser(null);
-      },
-    }),
-    [user, loading],
-  );
+  const login = async (email: string, password: string) => {
+    const result = await authService.login(email, password);
+    saveSession(result.user, result.token);
+  };
+
+  const signup = async (name: string, email: string, password: string) => {
+    const result = await authService.signup(name, email, password);
+    saveSession(result.user, result.token);
+  };
+
+  const adminLogin = async (email: string, password: string) => {
+    const result = await authService.adminLogin(email, password);
+    saveSession({ ...result.user, role: 'admin' }, result.token);
+  };
+
+  const logout = () => {
+    storage.clearToken();
+    storage.clearUser();
+    setUser(null);
+  };
+
+  const role: Role = user?.role ?? 'guest';
+
+  const value = useMemo(() => ({ user, role, login, signup, adminLogin, logout }), [user, role]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error('useAuth must be used inside AuthProvider');
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
   }
-  return ctx;
+  return context;
 };
