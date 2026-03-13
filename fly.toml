@@ -2,8 +2,8 @@ app = "prize-board-backend"
 primary_region = "iad"
 
 [build]
-  dockerfile = "prize-board-app/backend/Dockerfile"
-  context = "prize-board-app/backend"
+  dockerfile = "Dockerfile"
+  context = "."
 
 [env]
   NODE_ENV = "production"
