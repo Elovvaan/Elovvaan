@@ -2,20 +2,16 @@ import { api } from './api';
 import type { Board } from '../types';
 
 export const boardService = {
-  getActiveBoards: async () => {
-    const { data } = await api.get<Board[]>('/boards/active');
+  listBoards: async () => {
+    const { data } = await api.get<Board[]>('/boards');
     return data;
   },
   getBoard: async (id: string) => {
     const { data } = await api.get<Board>(`/boards/${id}`);
     return data;
   },
-  createBoard: async (payload: Omit<Board, 'id'>) => {
+  createBoard: async (payload: Partial<Board>) => {
     const { data } = await api.post<Board>('/admin/boards', payload);
-    return data;
-  },
-  getAdminBoards: async () => {
-    const { data } = await api.get<Board[]>('/admin/boards');
     return data;
   },
 };

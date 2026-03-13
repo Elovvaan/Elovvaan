@@ -1,18 +1,10 @@
-import { useEffect, useState } from 'react';
 import { Card } from '../../components/Card';
-import { paymentService } from '../../services/paymentService';
+import { PageShell } from '../../components/PageShell';
 
-export const AdminPaymentLogsPage = () => {
-  const [logs, setLogs] = useState<Record<string, unknown>[]>([]);
-
-  useEffect(() => {
-    paymentService.getPaymentLogs().then((d) => setLogs(d as Record<string, unknown>[]));
-  }, []);
-
-  return (
+export const AdminPaymentLogsPage = () => (
+  <PageShell title="Payment Logs" subtitle="Audit Stripe transactions">
     <Card>
-      <h1 className="text-2xl font-bold">Payment Logs</h1>
-      <pre className="mt-3 overflow-x-auto text-xs text-slate-300">{JSON.stringify(logs, null, 2)}</pre>
+      <p className="text-sm">Connect this page to <code>/admin/payments/logs</code> for full history.</p>
     </Card>
-  );
-};
+  </PageShell>
+);

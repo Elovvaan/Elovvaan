@@ -1,26 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Card } from '../../components/Card';
+import { PageShell } from '../../components/PageShell';
 import { userService } from '../../services/userService';
-import type { NotificationItem } from '../../types';
 
 export const NotificationsPage = () => {
-  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [items, setItems] = useState<string[]>([]);
 
   useEffect(() => {
-    userService.notifications().then(setItems);
+    userService.notifications().then(setItems).catch(() => setItems(['No notifications available right now.']));
   }, []);
 
   return (
-    <Card>
-      <h1 className="text-2xl font-bold">Notifications</h1>
-      <ul className="mt-4 space-y-3">
-        {items.map((item) => (
-          <li key={item.id} className="rounded-lg border border-slate-700 p-3">
-            <p className="font-medium">{item.title}</p>
-            <p className="text-sm text-slate-300">{item.body}</p>
-          </li>
-        ))}
-      </ul>
-    </Card>
+    <PageShell title="Notifications" subtitle="Stay up to date with board activity">
+      <Card>
+        <ul className="space-y-2 text-sm">
+          {items.map((item) => <li key={item} className="rounded-lg bg-slate-50 p-2">{item}</li>)}
+        </ul>
+      </Card>
+    </PageShell>
   );
 };

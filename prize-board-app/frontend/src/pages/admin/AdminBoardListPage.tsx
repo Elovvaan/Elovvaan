@@ -1,24 +1,27 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
+import { PageShell } from '../../components/PageShell';
 import { boardService } from '../../services/boardService';
 import type { Board } from '../../types';
 
 export const AdminBoardListPage = () => {
   const [boards, setBoards] = useState<Board[]>([]);
-
   useEffect(() => {
-    boardService.getAdminBoards().then(setBoards);
+    boardService.listBoards().then(setBoards).catch(() => setBoards([]));
   }, []);
 
   return (
-    <Card>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Boards</h1>
-        <Link to="/admin/boards/new"><Button>Create board</Button></Link>
+    <PageShell title="Admin Boards" subtitle="Create and monitor boards">
+      <Link className="inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white" to="/admin/boards/create">Create Board</Link>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {boards.map((board) => (
+          <Card key={board.id}>
+            <h3 className="font-semibold">{board.title}</h3>
+            <Link className="text-sm text-brand-700" to={`/admin/boards/${board.id}`}>Details</Link>
+          </Card>
+        ))}
       </div>
-      <ul className="space-y-2">{boards.map((b) => <li key={b.id}><Link to={`/admin/boards/${b.id}`} className="text-brand-500">{b.title}</Link></li>)}</ul>
-    </Card>
+    </PageShell>
   );
 };

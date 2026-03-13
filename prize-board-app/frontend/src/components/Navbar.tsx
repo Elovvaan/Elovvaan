@@ -1,43 +1,22 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Button } from './Button';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link to="/" className="text-lg font-bold text-white">
-          Swipe<span className="text-brand-500">2Win</span>
-        </Link>
-        <nav className="flex items-center gap-4 text-sm text-slate-300">
-          <Link to="/boards" className="hover:text-white">
-            Boards
-          </Link>
-          <Link to="/terms" className="hover:text-white">
-            Terms
-          </Link>
+        <Link to="/" className="text-lg font-bold text-brand-700">Swipe2Win</Link>
+        <div className="flex items-center gap-3 text-xs sm:text-sm">
+          <Link to="/dashboard" className="text-slate-600">Dashboard</Link>
+          <Link to="/notifications" className="text-slate-600">Notifications</Link>
           {user ? (
-            <>
-              <Link to={user.role === 'admin' ? '/admin/boards' : '/dashboard'} className="hover:text-white">
-                Dashboard
-              </Link>
-              <Button variant="secondary" onClick={logout}>
-                Logout
-              </Button>
-            </>
+            <button onClick={logout} className="rounded-lg border px-3 py-1">Logout</button>
           ) : (
-            <>
-              <Link to="/login" className="hover:text-white">
-                Login
-              </Link>
-              <Link to="/signup" className="hover:text-white">
-                Sign up
-              </Link>
-            </>
+            <Link to="/login" className="rounded-lg bg-brand-600 px-3 py-1 text-white">Login</Link>
           )}
-        </nav>
+        </div>
       </div>
     </header>
   );

@@ -1,23 +1,11 @@
-import { useEffect, useState } from 'react';
 import { Card } from '../../components/Card';
-import { userService } from '../../services/userService';
+import { PageShell } from '../../components/PageShell';
 
-export const ReferralPage = () => {
-  const [referralLink, setReferralLink] = useState('');
-  const [xpRewards, setXpRewards] = useState<string[]>([]);
-
-  useEffect(() => {
-    userService.referrals().then((d) => {
-      setReferralLink(d.referralLink);
-      setXpRewards(d.xpRewards);
-    });
-  }, []);
-
-  return (
+export const ReferralPage = () => (
+  <PageShell title="Referral Program" subtitle="Invite friends and get bonus entries">
     <Card>
-      <h1 className="text-2xl font-bold">Referral Program</h1>
-      <p className="mt-3 break-all rounded-lg bg-slate-800 p-3 text-sm">{referralLink}</p>
-      <ul className="mt-4 list-disc pl-5 text-slate-300">{xpRewards.map((reward) => <li key={reward}>{reward}</li>)}</ul>
+      <p className="text-sm">Your referral link:</p>
+      <p className="mt-2 rounded-lg bg-slate-100 p-2 text-xs">https://swipe2win.app/r/your-code</p>
     </Card>
-  );
-};
+  </PageShell>
+);

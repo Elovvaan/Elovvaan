@@ -1,5 +1,5 @@
-export const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg shadow-slate-950/40 ${className}`}>
-    {children}
-  </div>
+import type { ReactNode } from 'react';
+
+export const Card = ({ children }: { children: ReactNode }) => (
+  <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">{children}</section>
 );
