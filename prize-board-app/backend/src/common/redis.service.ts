@@ -8,27 +8,33 @@ export class RedisService {
   private readonly logger = new Logger(RedisService.name);
 
   constructor(config: ConfigService) {
-    const redisUrl =
-      config.get<string>('QUEUE_REDIS_URL') ||
-      config.get<string>('REDIS_URL') ||
-      process.env.QUEUE_REDIS_URL ||
-      process.env.REDIS_URL;
+    const queueRedisUrl = config.get<string>('QUEUE_REDIS_URL') || process.env.QUEUE_REDIS_URL;
+    const redisUrl = config.get<string>('REDIS_URL') || process.env.REDIS_URL;
+    const resolvedRedisUrl = queueRedisUrl || redisUrl;
+    const nodeEnv = config.get<string>('NODE_ENV') || process.env.NODE_ENV || 'development';
+    const isProduction = nodeEnv === 'production';
 
-    if (!redisUrl) {
+    if (!resolvedRedisUrl) {
+      if (isProduction) {
+        throw new Error(
+          'Redis URL is not configured in production. Set QUEUE_REDIS_URL (preferred) or REDIS_URL before startup.'
+        );
+      }
+
       this.logger.warn('Redis URL is not set. Configure QUEUE_REDIS_URL or REDIS_URL. Falling back to redis://localhost:6379');
     }
 
-    const resolvedRedisUrl = redisUrl || 'redis://localhost:6379';
+    const redisConnectionUrl = resolvedRedisUrl || 'redis://localhost:6379';
 
-    this.client = new Redis(resolvedRedisUrl);
+    this.client = new Redis(redisConnectionUrl);
 
     this.client.on('connect', () => {
-      this.logger.log(`Connected to Redis at ${this.sanitizeRedisUrl(resolvedRedisUrl)}`);
+      this.logger.log(`Connected to Redis at ${this.sanitizeRedisUrl(redisConnectionUrl)}`);
     });
 
     this.client.on('error', (error) => {
       this.logger.error(
-        `Redis connection error for ${this.sanitizeRedisUrl(resolvedRedisUrl)}: ${error.message}`,
+        `Redis connection error for ${this.sanitizeRedisUrl(redisConnectionUrl)}: ${error.message}`,
         error.stack
       );
     });
