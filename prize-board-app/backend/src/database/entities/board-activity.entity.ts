@@ -1,4 +1,12 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, RelationId } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Board } from './board.entity';
 
 @Entity('board_activities')
@@ -7,12 +15,12 @@ export class BoardActivity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @ManyToOne(() => Board, { nullable: false })
+  @Column({ name: 'board_id', type: 'uuid' })
+  boardId!: string;
+
+  @ManyToOne(() => Board, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'board_id' })
   board!: Board;
-
-  @RelationId((activity: BoardActivity) => activity.board)
-  boardId!: string;
 
   @Column({ name: 'event_type' })
   eventType!: string;
