@@ -13,6 +13,7 @@ import { QueueModule } from './common/queues/queue.module';
 import { ReferralsModule } from './modules/referrals/referrals.module';
 import { GlobalRateLimitMiddleware } from './common/rate-limit.middleware';
 import { CreatorsModule } from './modules/creators/creators.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { CreatorsModule } from './modules/creators/creators.module';
     AdminModule,
     CreatorsModule
   ],
+  controllers: [HealthController],
   providers: [GlobalRateLimitMiddleware]
 })
 export class AppModule implements NestModule {
