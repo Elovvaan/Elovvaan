@@ -9,7 +9,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint \"src/**/*.ts\" --fix",
-    "start:worker": "node dist/worker"
+    "start:worker": "node dist/worker",
+    "prebuild": "rm -rf dist"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.8",
