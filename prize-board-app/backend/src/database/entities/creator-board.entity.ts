@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn, RelationId } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from './user.entity';
 import { Board } from './board.entity';
 
@@ -8,12 +8,12 @@ export class CreatorBoard {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
+  @Column({ name: 'creator_user_id', type: 'uuid' })
+  creatorUserId!: string;
+
   @ManyToOne(() => User, { nullable: false })
   @JoinColumn({ name: 'creator_user_id' })
   creatorUser!: User;
-
-  @RelationId((creatorBoard: CreatorBoard) => creatorBoard.creatorUser)
-  creatorUserId!: string;
 
   @OneToOne(() => Board, { nullable: false, eager: true })
   @JoinColumn({ name: 'board_id' })
