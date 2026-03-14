@@ -19,8 +19,8 @@ export enum EntryReviewStatus {
 }
 
 @Entity('entries')
-@Index(['boardId'])
-@Index(['userId'])
+@Index(['board'])
+@Index(['user'])
 @Unique('uq_entries_external_ref', ['externalReference'])
 export class Entry {
   @PrimaryGeneratedColumn('uuid')
