@@ -9,21 +9,10 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { WinnersModule } from './modules/winners/winners.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AdminModule } from './modules/admin/admin.module';
-import { User } from './database/entities/user.entity';
-import { Board } from './database/entities/board.entity';
-import { Entry } from './database/entities/entry.entity';
-import { Payment } from './database/entities/payment.entity';
-import { Winner } from './database/entities/winner.entity';
-import { Notification } from './database/entities/notification.entity';
-import { Referral } from './database/entities/referral.entity';
-import { CreatorBoard } from './database/entities/creator-board.entity';
-import { Payout } from './database/entities/payout.entity';
 import { QueueModule } from './common/queues/queue.module';
 import { ReferralsModule } from './modules/referrals/referrals.module';
 import { GlobalRateLimitMiddleware } from './common/rate-limit.middleware';
 import { CreatorsModule } from './modules/creators/creators.module';
-import { BoardActivity } from './database/entities/board-activity.entity';
-import { UserDeviceToken } from './database/entities/user-device-token.entity';
 
 @Module({
   imports: [
@@ -34,7 +23,7 @@ import { UserDeviceToken } from './database/entities/user-device-token.entity';
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
-        entities: [User, Board, Entry, Payment, Winner, Notification, Referral, CreatorBoard, Payout, BoardActivity, UserDeviceToken],
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true
       })
     }),
