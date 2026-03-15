@@ -53,7 +53,9 @@ async function bootstrap() {
   Logger.log(JSON.stringify({ event: 'backend_started', port }), 'Bootstrap');
 }
 
-bootstrap().catch((error) => {
-  logError('backend_boot_failed', error);
-  process.exit(1);
+bootstrap() app.enableCors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 });
