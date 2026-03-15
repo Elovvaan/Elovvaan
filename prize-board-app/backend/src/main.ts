@@ -42,7 +42,7 @@ async function bootstrap() {
   // Vercel preview URL pattern for this project
   const vercelPreviewPattern = /^https:\/\/swipe2swin(-[a-z0-9-]+)?\.vercel\.app$/;
 
-  app.enableCors({
+
     origin: (origin, callback) => {
       // Allow requests with no origin (e.g., mobile apps, curl, server-to-server)
       if (!origin) {
