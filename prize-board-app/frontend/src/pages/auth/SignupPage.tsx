@@ -5,6 +5,23 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { PageShell } from '../../components/PageShell';
 import { useAuth } from '../../hooks/useAuth';
+import { buildApiUrl } from '../../services/api';
+
+const SIGNUP_PATH = '/auth/register';
+const SIGNUP_URL = buildApiUrl(SIGNUP_PATH);
+
+const formatBackendMessage = (message: unknown) => {
+  if (Array.isArray(message)) {
+    return message.map((entry) => (typeof entry === 'string' ? entry : JSON.stringify(entry))).join('; ');
+  }
+  if (typeof message === 'string') {
+    return message;
+  }
+  if (message && typeof message === 'object') {
+    return JSON.stringify(message);
+  }
+  return 'Unknown backend error';
+};
 
 export const SignupPage = () => {
   const [name, setName] = useState('');
@@ -13,6 +30,7 @@ export const SignupPage = () => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requestUrl, setRequestUrl] = useState(SIGNUP_URL);
   const { signup } = useAuth();
   const navigate = useNavigate();
 
@@ -21,6 +39,7 @@ export const SignupPage = () => {
 
     setValidationError(null);
     setApiError(null);
+    setRequestUrl(SIGNUP_URL);
 
     const trimmedName = name.trim();
     const trimmedEmail = email.trim();
@@ -38,11 +57,26 @@ export const SignupPage = () => {
     setIsSubmitting(true);
 
     try {
-      await signup(trimmedName, trimmedEmail, password);
+      const result = await signup(trimmedName, trimmedEmail, password);
+      if (result?.requestUrl) {
+        setRequestUrl(result.requestUrl);
+      }
       navigate('/dashboard');
     } catch (error) {
-      if (axios.isAxiosError(error) && typeof error.response?.data?.message === 'string') {
-        setApiError(error.response.data.message);
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+
+        if (!error.response) {
+          setApiError('Network error: could not reach server.');
+        } else {
+          const backendMessage = formatBackendMessage(error.response.data?.message);
+          setApiError(`HTTP ${status ?? 'unknown'}: ${backendMessage}`);
+        }
+
+        const failedUrl = error.config?.baseURL && error.config?.url
+          ? buildApiUrl(error.config.url)
+          : SIGNUP_URL;
+        setRequestUrl(failedUrl);
       } else {
         setApiError('We could not create your account. Please try again.');
       }
@@ -57,6 +91,9 @@ export const SignupPage = () => {
         <form className="space-y-3" onSubmit={handleSubmit}>
           {validationError ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{validationError}</p> : null}
           {apiError ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{apiError}</p> : null}
+          <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600 break-all">
+            Signup request URL: {requestUrl}
+          </p>
           <input
             className="w-full rounded-lg border px-3 py-2"
             placeholder="Name"

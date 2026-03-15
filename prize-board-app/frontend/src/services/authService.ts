@@ -7,21 +7,41 @@ interface AuthResponse {
   user: User;
 }
 
+interface BackendAuthResponse {
+  accessToken: string;
+}
+
+interface SignupResult extends AuthResponse {
+  requestUrl: string;
+}
+
+const mapAuthResponse = async (path: string, payload: Record<string, unknown>) => {
+  const { data } = await api.post<BackendAuthResponse>(path, payload);
+  const token = data.accessToken;
+  const { data: user } = await api.get<User>('/me', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return { token, user };
+};
+
 export const authService = {
   login: async (email: string, password: string) => {
-    const { data } = await api.post<AuthResponse>('/auth/login', { email, password });
-    return data;
+    return mapAuthResponse('/auth/login', { email, password });
   },
-  signup: async (name: string, email: string, password: string) => {
-    const signupPath = '/api/auth/register';
+  signup: async (_name: string, email: string, password: string): Promise<SignupResult> => {
+    const signupPath = '/auth/register';
     const signupUrl = buildApiUrl(signupPath);
+    const payload = { email, password };
 
-    console.info('[signup] sending request', { url: signupUrl });
+    console.info('[signup] sending request', { url: signupUrl, payload });
 
     try {
-      const response = await api.post<AuthResponse>(signupPath, { name, email, password });
-      console.info('[signup] received response', { url: signupUrl, status: response.status });
-      return response.data;
+      const result = await mapAuthResponse(signupPath, payload);
+      console.info('[signup] received response', { url: signupUrl });
+      return { ...result, requestUrl: signupUrl };
     } catch (error) {
       const status = axios.isAxiosError(error) ? error.response?.status : undefined;
       console.error('[signup] request failed', { url: signupUrl, status, error });
