@@ -10,7 +10,10 @@ async function bootstrap() {
       'https://swipe2win.app',
       'https://swipe2swin.vercel.app',
       'https://swipe2swin-git-main-elovvaans-projects.vercel.app',
+      'https://swipe2swin-elovvaans-projects.vercel.app',
     ],
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
 
