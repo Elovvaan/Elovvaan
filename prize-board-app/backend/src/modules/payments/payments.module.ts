@@ -10,9 +10,10 @@ import { UsersModule } from '../users/users.module';
 import { BoardsModule } from '../boards/boards.module';
 import { ReferralsModule } from '../referrals/referrals.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Payment, Entry, CreatorBoard, PaymentEvent]), UsersModule, BoardsModule, ReferralsModule, NotificationsModule],
+  imports: [TypeOrmModule.forFeature([Payment, Entry, CreatorBoard, PaymentEvent]), UsersModule, BoardsModule, ReferralsModule, NotificationsModule, WalletModule],
   controllers: [PaymentsController],
   providers: [PaymentsService],
   exports: [PaymentsService]

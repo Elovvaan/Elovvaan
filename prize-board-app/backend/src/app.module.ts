@@ -16,12 +16,14 @@ import { CreatorsModule } from './modules/creators/creators.module';
 import { HealthController } from './health.controller';
 import { validateEnv } from './config/env.validation';
 import { AuditModule } from './common/audit/audit.module';
+import { WalletModule } from './modules/wallet/wallet.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     QueueModule,
     AuditModule,
+    WalletModule,
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
