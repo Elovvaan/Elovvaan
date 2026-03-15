@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { api, buildApiUrl } from './api';
+import { api } from './api';
 import type { User } from '../types';
 
 interface AuthResponse {
@@ -15,13 +15,17 @@ interface SignupResult extends AuthResponse {
   requestUrl: string;
 }
 
-const AUTH_LOGIN_PATH = '/auth/login';
-const AUTH_REGISTER_PATH = '/auth/register';
+const AUTH_ENDPOINTS = {
+  login: '/auth/login',
+  register: '/auth/register',
+  me: '/me',
+  adminLogin: '/admin/login',
+} as const;
 
 const mapAuthResponse = async (path: string, payload: Record<string, unknown>) => {
   const { data } = await api.post<BackendAuthResponse>(path, payload);
   const token = data.accessToken;
-  const { data: user } = await api.get<User>('/me', {
+  const { data: user } = await api.get<User>(AUTH_ENDPOINTS.me, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -32,26 +36,25 @@ const mapAuthResponse = async (path: string, payload: Record<string, unknown>) =
 
 export const authService = {
   login: async (email: string, password: string) => {
-    return mapAuthResponse(AUTH_LOGIN_PATH, { email, password });
+    return mapAuthResponse(AUTH_ENDPOINTS.login, { email, password });
   },
   signup: async (_name: string, email: string, password: string): Promise<SignupResult> => {
-    const signupUrl = buildApiUrl(AUTH_REGISTER_PATH);
     const payload = { email, password };
 
-    console.info('[signup] sending request', { url: signupUrl, payload });
+    console.info('[signup] sending request', { path: AUTH_ENDPOINTS.register, payload });
 
     try {
-      const result = await mapAuthResponse(AUTH_REGISTER_PATH, payload);
-      console.info('[signup] received response', { url: signupUrl });
-      return { ...result, requestUrl: signupUrl };
+      const result = await mapAuthResponse(AUTH_ENDPOINTS.register, payload);
+      console.info('[signup] received response', { path: AUTH_ENDPOINTS.register });
+      return { ...result, requestUrl: AUTH_ENDPOINTS.register };
     } catch (error) {
       const status = axios.isAxiosError(error) ? error.response?.status : undefined;
-      console.error('[signup] request failed', { url: signupUrl, status, error });
+      console.error('[signup] request failed', { path: AUTH_ENDPOINTS.register, status, error });
       throw error;
     }
   },
   adminLogin: async (email: string, password: string) => {
-    const { data } = await api.post<AuthResponse>('/admin/login', { email, password });
+    const { data } = await api.post<AuthResponse>(AUTH_ENDPOINTS.adminLogin, { email, password });
     return data;
   },
 };

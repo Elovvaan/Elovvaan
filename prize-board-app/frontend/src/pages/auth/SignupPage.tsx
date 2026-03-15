@@ -59,7 +59,7 @@ export const SignupPage = () => {
     try {
       const result = await signup(trimmedName, trimmedEmail, password);
       if (result?.requestUrl) {
-        setRequestUrl(result.requestUrl);
+        setRequestUrl(buildApiUrl(result.requestUrl));
       }
       navigate('/dashboard');
     } catch (error) {
