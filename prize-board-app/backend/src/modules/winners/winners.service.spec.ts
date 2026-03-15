@@ -15,11 +15,25 @@ describe('WinnersService', () => {
       save: jest.fn().mockImplementation(async (payload) => ({ id: 'w1', ...payload }))
     } as any;
 
-    const service = new WinnersService(
-      winnersRepo,
-      { find: jest.fn().mockResolvedValue(entries) } as any,
-      { findOne: jest.fn().mockResolvedValue({ id: 'board-1', createdAt: new Date('2025-12-31T00:00:00.000Z') }) } as any
-    );
+    const boardsRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: 'board-1', createdAt: new Date('2025-12-31T00:00:00.000Z') })
+    } as any;
+
+    const entriesRepo = { find: jest.fn().mockResolvedValue(entries) } as any;
+
+    const dataSource = {
+      transaction: jest.fn().mockImplementation(async (fn: any) =>
+        fn({
+          getRepository: (entity: any) => {
+            if (entity?.name === 'Winner') return winnersRepo;
+            if (entity?.name === 'Board') return boardsRepo;
+            return entriesRepo;
+          }
+        })
+      )
+    } as any;
+
+    const service = new WinnersService(winnersRepo, entriesRepo, boardsRepo, dataSource, { log: jest.fn() } as any, { credit: jest.fn() } as any);
 
     const seed = createHash('sha256').update('board-1:2026-01-03T00:00:00.000Z').digest('hex');
     const expectedIndex = Number.parseInt(seed.slice(0, 12), 16) % entries.length;
@@ -37,7 +51,14 @@ describe('WinnersService', () => {
       findOne: jest.fn().mockResolvedValue(existingWinner)
     } as any;
 
-    const service = new WinnersService(winnersRepo, { find: jest.fn() } as any, { findOne: jest.fn() } as any);
+    const service = new WinnersService(
+      winnersRepo,
+      { find: jest.fn() } as any,
+      { findOne: jest.fn() } as any,
+      { transaction: jest.fn() } as any,
+      { log: jest.fn() } as any,
+      { credit: jest.fn() } as any
+    );
 
     await expect(service.selectWinner('board-1')).resolves.toBe(existingWinner);
   });

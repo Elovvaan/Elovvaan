@@ -15,6 +15,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CreatorBoard } from '../../database/entities/creator-board.entity';
 import { PaymentEvent } from '../../database/entities/payment-event.entity';
 import { AuditService } from '../../common/audit/audit.service';
+import { WalletService } from '../wallet/wallet.service';
 
 interface PaymentJobData {
   eventId: string;
@@ -39,7 +40,8 @@ export class PaymentsService {
     private queueService: QueueService,
     private referralsService: ReferralsService,
     private notificationsService: NotificationsService,
-    private auditService: AuditService
+    private auditService: AuditService,
+    private walletService: WalletService
   ) {
     this.stripe = new Stripe(config.get<string>('STRIPE_SECRET_KEY') || '', { apiVersion: '2024-06-20' });
     this.stripeWebhookSecret = config.get<string>('STRIPE_WEBHOOK_SECRET') || '';
@@ -169,6 +171,19 @@ export class PaymentsService {
         metadata: { paymentIntentId, eventId }
       });
       this.logger.log(JSON.stringify({ event: 'payment_confirmed', paymentId: payment.id, paymentIntentId }));
+
+      const amountCents = Math.round(Number(payment.amount) * 100);
+      if (amountCents > 0) {
+        await this.walletService.credit(payment.userId, amountCents, 'PAYMENT_SETTLED', `payment-settled:${payment.id}`, {
+          boardId: payment.boardId,
+          paymentIntentId
+        });
+        await this.walletService.debit(payment.userId, amountCents, 'ENTRY_PURCHASE', `entry-purchase:${payment.id}`, {
+          boardId: payment.boardId,
+          paymentIntentId
+        });
+      }
+
       await this.boardsService.applyEscrowRevenue(payment.boardId, Number(payment.amount), Number(payment.creatorRevenue), Number(payment.platformRevenue));
 
       await this.queueService.add(
