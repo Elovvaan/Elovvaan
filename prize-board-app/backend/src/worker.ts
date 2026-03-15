@@ -6,6 +6,7 @@ import { EntriesService } from './modules/entries/entries.service';
 import { PaymentsService } from './modules/payments/payments.service';
 import { NotificationsService } from './modules/notifications/notifications.service';
 import { AnalyticsService } from './modules/analytics/analytics.service';
+import { logError, logEvent } from './common/observability';
 
 async function bootstrapWorkers() {
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -15,16 +16,28 @@ async function bootstrapWorkers() {
   const notificationsService = app.get(NotificationsService);
   const analyticsService = app.get(AnalyticsService);
 
+  const workerName = `worker-${process.pid}`;
+  const queueNames = [ENTRY_QUEUE, PAYMENT_QUEUE, WINNER_QUEUE, NOTIFICATION_QUEUE, ANALYTICS_QUEUE];
+  await queueService.registerWorkerHeartbeat(workerName, queueNames);
+  setInterval(() => {
+    void queueService.registerWorkerHeartbeat(workerName, queueNames);
+  }, 10_000);
+
+  logEvent('worker_booted', { workerName, queueNames });
+
   const loop = async (queueName: string, handler: (data: any) => Promise<unknown>) => {
     while (true) {
       const job = await queueService.getNextJob<any>(queueName, 1);
       if (!job) continue;
 
       try {
+        logEvent('job_started', { workerName, queueName, jobId: job.id, jobName: job.name });
         const result = await handler(job.data);
         await queueService.completeJob(job.id, result);
+        logEvent('job_completed', { workerName, queueName, jobId: job.id, jobName: job.name });
       } catch (error) {
         await queueService.failJob(job.id, (error as Error).message);
+        logError('job_failed', error, { workerName, queueName, jobId: job.id, jobName: job.name });
       }
     }
   };
@@ -36,4 +49,7 @@ async function bootstrapWorkers() {
   void loop(ANALYTICS_QUEUE, (data) => analyticsService.processDailyAggregationJob(data.day));
 }
 
-bootstrapWorkers();
+bootstrapWorkers().catch((error) => {
+  logError('worker_boot_failed', error);
+  process.exit(1);
+});

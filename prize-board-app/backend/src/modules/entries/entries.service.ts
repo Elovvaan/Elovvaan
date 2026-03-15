@@ -14,6 +14,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { QueueService } from '../../common/queues/queue.service';
 import { ENTRY_QUEUE, WINNER_QUEUE } from '../../common/queues/queue.constants';
 import { RedisService } from '../../common/redis.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 export interface EntryJobData {
   boardId: string;
@@ -38,7 +39,8 @@ export class EntriesService {
     private notificationsService: NotificationsService,
     @InjectRepository(Payout) private payoutsRepo: Repository<Payout>,
     private queueService: QueueService,
-    private redisService: RedisService
+    private redisService: RedisService,
+    private analyticsService: AnalyticsService
   ) {}
 
   async enterBoard(boardId: string, userId: string, paymentId: string) {

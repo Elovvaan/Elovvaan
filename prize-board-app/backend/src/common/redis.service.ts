@@ -69,6 +69,14 @@ export class RedisService {
     return value;
   }
 
+  async ping() {
+    return this.client.ping();
+  }
+
+  async getKeys(pattern: string) {
+    return this.client.keys(pattern);
+  }
+
   private sanitizeRedisUrl(url: string) {
     try {
       const parsed = new URL(url);

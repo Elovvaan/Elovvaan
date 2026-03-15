@@ -18,9 +18,9 @@ describe('EntriesService', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
       queueService,
-      { setNx: jest.fn().mockResolvedValue(true), get: jest.fn().mockResolvedValue('p1:1'), del: jest.fn() } as any
+      { setNx: jest.fn().mockResolvedValue(true), get: jest.fn().mockResolvedValue('p1:1'), del: jest.fn() } as any,
+      { track: jest.fn() } as any
     );
 
     const result = await service.enterBoard('b1', 'u1', 'p1');

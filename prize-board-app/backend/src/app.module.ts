@@ -17,6 +17,7 @@ import { HealthController } from './health.controller';
 import { validateEnv } from './config/env.validation';
 import { AuditModule } from './common/audit/audit.module';
 import { WalletModule } from './modules/wallet/wallet.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { WalletModule } from './modules/wallet/wallet.module';
     QueueModule,
     AuditModule,
     WalletModule,
+    AnalyticsModule,
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

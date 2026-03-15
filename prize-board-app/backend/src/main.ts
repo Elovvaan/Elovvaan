@@ -2,8 +2,17 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import * as express from 'express';
 import { AppModule } from './app.module';
+import { logError, logEvent } from './common/observability';
 
 async function bootstrap() {
+  process.on('unhandledRejection', (reason) => {
+    logError('process_unhandled_rejection', reason);
+  });
+
+  process.on('uncaughtException', (error) => {
+    logError('process_uncaught_exception', error);
+  });
+
   const app = await NestFactory.create(AppModule, {
     logger: ['log', 'error', 'warn', 'debug']
   });
@@ -17,7 +26,11 @@ async function bootstrap() {
   const port = Number(process.env.PORT) || 3000;
 
   await app.listen(port);
+  logEvent('backend_started', { port, sentryReady: Boolean(process.env.SENTRY_DSN) });
   Logger.log(JSON.stringify({ event: 'backend_started', port }), 'Bootstrap');
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  logError('backend_boot_failed', error);
+  process.exit(1);
+});

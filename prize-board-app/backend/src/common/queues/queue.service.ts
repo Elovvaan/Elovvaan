@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { RedisService } from '../redis.service';
 
-interface QueueJob<T> {
+export interface QueueJob<T> {
   id: string;
   name: string;
   data: T;
@@ -39,6 +39,37 @@ export class QueueService {
 
   async failJob(jobId: string, error: string) {
     await this.redis.set(`job:result:${jobId}`, JSON.stringify({ ok: false, error }), 120);
+  }
+
+
+
+  async getQueueDepth(queueName: string) {
+    return this.redis.getClient().llen(`queue:${queueName}`);
+  }
+
+  async registerWorkerHeartbeat(workerName: string, queueNames: string[]) {
+    const key = `worker:heartbeat:${workerName}`;
+    await this.redis.set(key, JSON.stringify({ workerName, queueNames, seenAt: new Date().toISOString() }), 30);
+    return key;
+  }
+
+  async getWorkerHeartbeats() {
+    const keys = await this.redis.getKeys('worker:heartbeat:*');
+    if (!keys.length) {
+      return [] as Array<{ workerName: string; queueNames: string[]; seenAt: string }>;
+    }
+
+    const values = await this.redis.getClient().mget(...keys);
+    return values.filter(Boolean).map((value) => JSON.parse(String(value)) as { workerName: string; queueNames: string[]; seenAt: string });
+  }
+
+  async getRuntimeInfo() {
+    const pong = await this.redis.ping();
+    return {
+      provider: 'redis-list-queue',
+      bullmqRuntimeReady: false,
+      isRedisReady: pong === 'PONG'
+    };
   }
 
   async waitForCompletion<T>(job: { id: string }, timeoutMs = 10000) {
