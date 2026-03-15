@@ -18,16 +18,12 @@ async function bootstrap() {
   });
 
   app.enableCors({
-    origin: [
-      'https://swipe2win.app',
-      'https://www.swipe2win.app',
-      'https://swipe2swin.vercel.app',
-      'https://swipe2swin-elovvaans-projects.vercel.app',
-      'https://swipe2swin-git-main-elovvaans-projects.vercel.app',
-    ],
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: (origin, callback) => callback(null, true),
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 
   app.use(
@@ -53,9 +49,4 @@ async function bootstrap() {
   Logger.log(JSON.stringify({ event: 'backend_started', port }), 'Bootstrap');
 }
 
-bootstrap() app.enableCors({
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-});
+bootstrap();

@@ -23,7 +23,11 @@ const AUTH_ENDPOINTS = {
 } as const;
 
 const mapAuthResponse = async (path: string, payload: Record<string, unknown>) => {
-  const { data } = await api.post<BackendAuthResponse>(path, payload);
+  const { data } = await api.post<BackendAuthResponse>(path, payload, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
   const token = data.accessToken;
   const { data: user } = await api.get<User>(AUTH_ENDPOINTS.me, {
     headers: {
@@ -54,7 +58,11 @@ export const authService = {
     }
   },
   adminLogin: async (email: string, password: string) => {
-    const { data } = await api.post<AuthResponse>(AUTH_ENDPOINTS.adminLogin, { email, password });
+    const { data } = await api.post<AuthResponse>(AUTH_ENDPOINTS.adminLogin, { email, password }, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
     return data;
   },
 };
