@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { api, buildApiUrl } from './api';
+import { API_BASE_URL, api, buildApiUrl } from './api';
 import type { User } from '../types';
 
 interface AuthResponse {
@@ -32,14 +32,13 @@ export const authService = {
     return mapAuthResponse('/auth/login', { email, password });
   },
   signup: async (_name: string, email: string, password: string): Promise<SignupResult> => {
-    const signupPath = '/auth/register';
-    const signupUrl = buildApiUrl(signupPath);
+    const signupUrl = `${API_BASE_URL}/auth/register`;
     const payload = { email, password };
 
     console.info('[signup] sending request', { url: signupUrl, payload });
 
     try {
-      const result = await mapAuthResponse(signupPath, payload);
+      const result = await mapAuthResponse(signupUrl, payload);
       console.info('[signup] received response', { url: signupUrl });
       return { ...result, requestUrl: signupUrl };
     } catch (error) {
