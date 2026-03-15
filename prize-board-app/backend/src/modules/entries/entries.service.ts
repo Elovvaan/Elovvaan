@@ -13,6 +13,7 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { QueueService } from '../../common/queues/queue.service';
 import { ENTRY_QUEUE, WINNER_QUEUE } from '../../common/queues/queue.constants';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 export interface EntryJobData {
   boardId: string;
@@ -36,11 +37,14 @@ export class EntriesService {
     private notificationsGateway: NotificationsGateway,
     private notificationsService: NotificationsService,
     @InjectRepository(Payout) private payoutsRepo: Repository<Payout>,
-    private queueService: QueueService
+    private queueService: QueueService,
+    private analyticsService: AnalyticsService
   ) {}
 
   async enterBoard(boardId: string, userId: string, paymentId: string) {
     const payment = await this.paymentsService.assertPaymentSucceeded(paymentId, userId, boardId);
+    const user = await this.usersService.findById(userId);
+    if (user?.isSuspended) throw new ForbiddenException('Suspended users cannot enter boards');
     const board = await this.boardsService.get(boardId);
     if (board.status !== BoardStatus.OPEN) {
       throw new BadRequestException('Board is not open for entries');
@@ -139,6 +143,7 @@ export class EntriesService {
 
       this.logger.log(JSON.stringify({ event: 'entry_created', boardId, userId, paymentId, quantity }));
       this.notificationsGateway.broadcast('entry_added', { boardId, entryId: entries[0]?.id, quantity });
+      this.notificationsGateway.broadcast('board_fill_update', { boardId, currentEntries: updatedBoard.currentEntries, maxEntries: updatedBoard.maxEntries });
       this.notificationsGateway.broadcast('board_progress', { boardId, currentEntries: updatedBoard.currentEntries, maxEntries: updatedBoard.maxEntries });
       this.notificationsGateway.broadcast('board_update', updatedBoard);
       await this.boardsService.recordActivity(boardId, 'entry_added', { userId, quantity, currentEntries: updatedBoard.currentEntries });
@@ -148,9 +153,13 @@ export class EntriesService {
         prestigeLevel: userAfterEntry.prestigeLevel
       });
       await this.notificationsService.notify(userId, 'ENTRY_CONFIRMED', `You have entered ${updatedBoard.title}`);
+      await this.analyticsService.track({ eventName: 'entry_added', userId, boardId, metadata: { quantity } });
 
       if (updatedBoard.status === BoardStatus.FULL) {
         this.logger.log(JSON.stringify({ event: 'board_full', boardId: updatedBoard.id }));
+        this.notificationsGateway.broadcast('board_full', { boardId: updatedBoard.id, currentEntries: updatedBoard.currentEntries, maxEntries: updatedBoard.maxEntries });
+        await this.notificationsService.notify(userId, 'BOARD_FULL', `${updatedBoard.title} is now full.`);
+        await this.analyticsService.track({ eventName: 'board_full', boardId: updatedBoard.id, metadata: { maxEntries: updatedBoard.maxEntries } });
         await this.queueService.add(WINNER_QUEUE, 'select-winner', { boardId: updatedBoard.id }, { jobId: `winner:${updatedBoard.id}` });
       } else if (updatedBoard.maxEntries - updatedBoard.currentEntries <= 5) {
         await this.notificationsService.notify(userId, 'BOARD_ALMOST_FULL', `${updatedBoard.title} is almost full.`);
@@ -167,6 +176,7 @@ export class EntriesService {
 
     await this.notificationsService.notify(winner.userId, 'WINNER_ANNOUNCED', `You won ${closedBoard.title}`);
     this.notificationsGateway.broadcast('winner_selected', winner);
+    await this.analyticsService.track({ eventName: 'winner_selected', userId: winner.userId, boardId, metadata: { entryId: winner.entryId } });
     await this.boardsService.recordActivity(boardId, 'winner_selected', { winnerUserId: winner.userId, entryId: winner.entryId });
     this.notificationsGateway.broadcast('board_update', closedBoard);
     this.notificationsGateway.broadcast('xp_updated', {

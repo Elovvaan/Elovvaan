@@ -15,6 +15,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CreatorBoard } from '../../database/entities/creator-board.entity';
 import { PaymentEvent } from '../../database/entities/payment-event.entity';
 import { AuditService } from '../../common/audit/audit.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 interface PaymentJobData {
   eventId: string;
@@ -39,7 +40,8 @@ export class PaymentsService {
     private queueService: QueueService,
     private referralsService: ReferralsService,
     private notificationsService: NotificationsService,
-    private auditService: AuditService
+    private auditService: AuditService,
+    private analyticsService: AnalyticsService
   ) {
     this.stripe = new Stripe(config.get<string>('STRIPE_SECRET_KEY') || '', { apiVersion: '2024-06-20' });
     this.stripeWebhookSecret = config.get<string>('STRIPE_WEBHOOK_SECRET') || '';
@@ -61,6 +63,10 @@ export class PaymentsService {
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    if (user.isSuspended) {
+      throw new BadRequestException('Suspended users cannot make payments');
     }
 
     if (board.status !== BoardStatus.OPEN || board.verificationStatus !== PrizeVerificationStatus.VERIFIED) {
@@ -170,6 +176,13 @@ export class PaymentsService {
       });
       this.logger.log(JSON.stringify({ event: 'payment_confirmed', paymentId: payment.id, paymentIntentId }));
       await this.boardsService.applyEscrowRevenue(payment.boardId, Number(payment.amount), Number(payment.creatorRevenue), Number(payment.platformRevenue));
+      await this.notificationsService.notify(payment.userId, 'PAYMENT_SUCCESS', `Payment for board entry was successful.`);
+      await this.analyticsService.track({
+        eventName: 'payment_succeeded',
+        userId: payment.userId,
+        boardId: payment.boardId,
+        metadata: { amount: Number(payment.amount), paymentId: payment.id }
+      });
 
       await this.queueService.add(
         ENTRY_QUEUE,

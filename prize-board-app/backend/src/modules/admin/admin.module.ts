@@ -12,9 +12,10 @@ import { BoardsModule } from '../boards/boards.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { FraudNote } from '../../database/entities/fraud-note.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Board, Entry, Payment, Winner, Notification, CreatorBoard, Payout]), BoardsModule, NotificationsModule],
+  imports: [TypeOrmModule.forFeature([User, Board, Entry, Payment, Winner, Notification, CreatorBoard, Payout, FraudNote]), BoardsModule, NotificationsModule],
   controllers: [AdminController],
   providers: [AdminService]
 })
