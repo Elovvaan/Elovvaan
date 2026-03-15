@@ -1,4 +1,5 @@
-import { api } from './api';
+import axios from 'axios';
+import { api, buildApiUrl } from './api';
 import type { User } from '../types';
 
 interface AuthResponse {
@@ -12,8 +13,20 @@ export const authService = {
     return data;
   },
   signup: async (name: string, email: string, password: string) => {
-    const { data } = await api.post<AuthResponse>('/auth/signup', { name, email, password });
-    return data;
+    const signupPath = '/api/auth/register';
+    const signupUrl = buildApiUrl(signupPath);
+
+    console.info('[signup] sending request', { url: signupUrl });
+
+    try {
+      const response = await api.post<AuthResponse>(signupPath, { name, email, password });
+      console.info('[signup] received response', { url: signupUrl, status: response.status });
+      return response.data;
+    } catch (error) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      console.error('[signup] request failed', { url: signupUrl, status, error });
+      throw error;
+    }
   },
   adminLogin: async (email: string, password: string) => {
     const { data } = await api.post<AuthResponse>('/admin/login', { email, password });
