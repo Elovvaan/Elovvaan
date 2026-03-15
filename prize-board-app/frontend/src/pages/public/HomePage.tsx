@@ -29,6 +29,7 @@ export const HomePage = () => {
     });
 
     return () => {
+      realtimeService.stopBoardEventFeed();
       offProgress();
       offBoardFull();
     };

@@ -53,6 +53,13 @@ export const realtimeService = {
     }, intervalMs);
   },
 
+  stopBoardEventFeed() {
+    if (boardPollHandle) {
+      window.clearInterval(boardPollHandle);
+      boardPollHandle = null;
+    }
+  },
+
   pushNotification(notification: UserNotification) {
     emit('push_notification', notification);
   }
