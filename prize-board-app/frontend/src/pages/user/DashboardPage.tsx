@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card } from '../../components/Card';
 import { PageShell } from '../../components/PageShell';
 import { useAuth } from '../../hooks/useAuth';
+import { boardService } from '../../services/boardService';
 import { realtimeService } from '../../services/realtimeService';
 import { userService } from '../../services/userService';
 import type { WalletLedger } from '../../types';
@@ -13,6 +14,9 @@ export const DashboardPage = () => {
 
   useEffect(() => {
     userService.walletLedger().then(setLedger).catch(() => setLedger({ balanceCents: 0, transactions: [] }));
+
+    // Ensure board event feed is running so we can receive winner_selected events
+    realtimeService.startBoardEventFeed(boardService.listBoards);
 
     const removeWinnerListener = realtimeService.on('winner_selected', (event: { winnerId?: string; boardId?: string }) => {
       if (event.winnerId && user?.id && event.winnerId === user.id) {
