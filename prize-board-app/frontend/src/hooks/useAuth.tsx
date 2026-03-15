@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import { authService } from '../services/authService';
+import { loginUser } from '../services/authApi';
 import { storage } from '../services/storage';
 import type { Role, User } from '../types';
 
@@ -18,6 +19,20 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+const toUser = (value: unknown): User => {
+  const payload = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+
+  return {
+    id: typeof payload.id === 'string' ? payload.id : '',
+    name: typeof payload.name === 'string' ? payload.name : '',
+    email: typeof payload.email === 'string' ? payload.email : '',
+    xp: typeof payload.xp === 'number' ? payload.xp : 0,
+    wins: typeof payload.wins === 'number' ? payload.wins : 0,
+    entries: typeof payload.entries === 'number' ? payload.entries : 0,
+    role: payload.role === 'admin' ? 'admin' : 'user',
+  };
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(storage.getUser());
 
@@ -28,14 +43,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const login = async (email: string, password: string) => {
-    const result = await authService.login(email, password);
-    saveSession(result.user, result.token);
+    const result = await loginUser({ email, password });
+    saveSession(toUser(result.user ?? { email, role: 'user' }), result.token);
   };
 
-  const signup = async (name: string, email: string, password: string) => {
-    const result = await authService.signup(name, email, password);
-    saveSession(result.user, result.token);
-    return { requestUrl: result.requestUrl };
+  const signup = async (_name: string, _email: string, _password: string) => {
+    throw new Error('Signup from AuthContext is deprecated. Use registerUser directly on the signup page.');
   };
 
   const adminLogin = async (email: string, password: string) => {
