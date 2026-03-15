@@ -13,6 +13,7 @@ describe('EntriesService', () => {
       {} as any,
       { get: jest.fn().mockResolvedValue({ id: 'b1', status: BoardStatus.OPEN }) } as any,
       { assertPaymentSucceeded: jest.fn().mockResolvedValue({ id: 'p1', entryQuantity: 1 }) } as any,
+      { findById: jest.fn().mockResolvedValue({ id: 'u1', isSuspended: false }) } as any,
       {} as any,
       {} as any,
       {} as any,

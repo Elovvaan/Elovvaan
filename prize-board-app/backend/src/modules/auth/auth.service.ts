@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -57,6 +57,10 @@ export class AuthService {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (user.isSuspended) {
+      throw new ForbiddenException('Account suspended');
     }
 
     await this.auditService.log({ actorUserId: user.id, action: 'auth.login', targetType: 'user', targetId: user.id });

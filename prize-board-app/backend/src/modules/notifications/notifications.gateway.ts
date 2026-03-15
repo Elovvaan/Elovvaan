@@ -7,6 +7,7 @@ export type NotificationEvent =
   | 'board_update'
   | 'entry_added'
   | 'board_progress'
+  | 'board_fill_update'
   | 'board_full'
   | 'winner_selected'
   | 'push_notification'

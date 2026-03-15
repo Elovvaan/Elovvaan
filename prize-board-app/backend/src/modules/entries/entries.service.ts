@@ -43,6 +43,8 @@ export class EntriesService {
 
   async enterBoard(boardId: string, userId: string, paymentId: string) {
     const payment = await this.paymentsService.assertPaymentSucceeded(paymentId, userId, boardId);
+    const user = await this.usersService.findById(userId);
+    if (user?.isSuspended) throw new ForbiddenException('Suspended users cannot enter boards');
     const board = await this.boardsService.get(boardId);
     if (board.status !== BoardStatus.OPEN) {
       throw new BadRequestException('Board is not open for entries');
@@ -190,6 +192,7 @@ export class EntriesService {
 
     await this.notificationsService.notify(winner.userId, 'WINNER_ANNOUNCED', `You won ${closedBoard.title}`);
     this.notificationsGateway.broadcast('winner_selected', winner);
+    await this.analyticsService.track({ eventName: 'winner_selected', userId: winner.userId, boardId, metadata: { entryId: winner.entryId } });
     await this.boardsService.recordActivity(boardId, 'winner_selected', { winnerUserId: winner.userId, entryId: winner.entryId });
     this.notificationsGateway.broadcast('board_update', closedBoard);
     this.notificationsGateway.broadcast('xp_updated', {

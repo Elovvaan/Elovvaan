@@ -36,6 +36,19 @@ export class User {
   @Column({ name: 'prestige_level', type: 'int', default: 0 })
   prestigeLevel!: number;
 
+
+  @Column({ name: 'wallet_balance', type: 'decimal', precision: 12, scale: 2, default: 0 })
+  walletBalance!: number;
+
+  @Column({ name: 'is_suspended', default: false })
+  isSuspended!: boolean;
+
+  @Column({ name: 'suspended_reason', nullable: true })
+  suspendedReason?: string;
+
+  @Column({ name: 'suspended_at', type: 'timestamp', nullable: true })
+  suspendedAt?: Date;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 

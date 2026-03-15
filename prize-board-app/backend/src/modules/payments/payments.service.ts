@@ -65,6 +65,10 @@ export class PaymentsService {
       throw new NotFoundException('User not found');
     }
 
+    if (user.isSuspended) {
+      throw new BadRequestException('Suspended users cannot make payments');
+    }
+
     if (board.status !== BoardStatus.OPEN || board.verificationStatus !== PrizeVerificationStatus.VERIFIED) {
       throw new BadRequestException('Board is not open for payments');
     }
@@ -185,6 +189,13 @@ export class PaymentsService {
       }
 
       await this.boardsService.applyEscrowRevenue(payment.boardId, Number(payment.amount), Number(payment.creatorRevenue), Number(payment.platformRevenue));
+      await this.notificationsService.notify(payment.userId, 'PAYMENT_SUCCESS', `Payment for board entry was successful.`);
+      await this.analyticsService.track({
+        eventName: 'payment_succeeded',
+        userId: payment.userId,
+        boardId: payment.boardId,
+        metadata: { amount: Number(payment.amount), paymentId: payment.id }
+      });
 
       await this.queueService.add(
         ENTRY_QUEUE,
