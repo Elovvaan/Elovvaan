@@ -17,17 +17,56 @@ async function bootstrap() {
     logger: ['log', 'error', 'warn', 'debug'],
   });
 
+  // Build allowed origins from environment variables
+  const allowedOrigins: string[] = [];
+
+  // Add explicit origins from CORS_ORIGIN (comma-separated)
+  if (process.env.CORS_ORIGIN) {
+    allowedOrigins.push(
+      ...process.env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean),
+    );
+  }
+
+  // Add Vercel frontend URL if provided
+  if (process.env.VERCEL_FRONTEND_URL) {
+    allowedOrigins.push(process.env.VERCEL_FRONTEND_URL.trim());
+  }
+
+  // Production domains
+  const productionOrigins = [
+    'https://swipe2win.app',
+    'https://www.swipe2win.app',
+  ];
+  allowedOrigins.push(...productionOrigins);
+
+  // Vercel preview URL pattern for this project
+  const vercelPreviewPattern = /^https:\/\/swipe2swin(-[a-z0-9-]+)?\.vercel\.app$/;
+
   app.enableCors({
-    origin: [
-      'https://swipe2win.app',
-      'https://www.swipe2win.app',
-      'https://swipe2swin.vercel.app',
-      'https://swipe2swin-elovvaans-projects.vercel.app',
-      'https://swipe2swin-git-main-elovvaans-projects.vercel.app',
-    ],
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g., mobile apps, curl, server-to-server)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Check explicit allowed origins
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Check Vercel preview URLs pattern
+      if (vercelPreviewPattern.test(origin)) {
+        return callback(null, true);
+      }
+
+      // Reject all other origins
+      return callback(new Error(`Origin ${origin} not allowed by CORS`), false);
+    },
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 
   app.use(
@@ -53,9 +92,4 @@ async function bootstrap() {
   Logger.log(JSON.stringify({ event: 'backend_started', port }), 'Bootstrap');
 }
 
-bootstrap() app.enableCors({
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-});
+bootstrap();
