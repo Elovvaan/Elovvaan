@@ -4,12 +4,6 @@ import * as express from 'express';
 import { AppModule } from './app.module';
 import { logError, logEvent } from './common/observability';
 
-const parseCorsOrigins = (value?: string) =>
-  (value || '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
 async function bootstrap() {
   process.on('unhandledRejection', (reason) => {
     logError('process_unhandled_rejection', reason);
@@ -23,24 +17,12 @@ async function bootstrap() {
     logger: ['log', 'error', 'warn', 'debug']
   });
 
-  const allowedOrigins = new Set(parseCorsOrigins(process.env.CORS_ORIGIN));
-  if (process.env.VERCEL_FRONTEND_URL) {
-    allowedOrigins.add(process.env.VERCEL_FRONTEND_URL.trim());
-  }
-
   app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
-
-      const isAllowed =
-        allowedOrigins.has(origin) ||
-        origin.endsWith('.vercel.app');
-
-      callback(isAllowed ? null : new Error(`Origin not allowed by CORS: ${origin}`), isAllowed);
-    },
+    origin: [
+      'https://swipe2win.app',
+      'https://swipe2swin.vercel.app',
+      'https://swipe2swin-git-main-elovvaans-projects.vercel.app'
+    ],
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS']
   });
