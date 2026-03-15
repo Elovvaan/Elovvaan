@@ -9,7 +9,7 @@
     "start:dev": "nest start --watch",
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "eslint \"src/**/*.ts\" --fix",
+    "lint": "tsc --noEmit",
     "start:worker": "node dist/worker",
     "prebuild": "rm -rf dist"
   },

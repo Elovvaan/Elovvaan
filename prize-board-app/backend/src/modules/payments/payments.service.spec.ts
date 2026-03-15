@@ -21,7 +21,8 @@ describe('PaymentsService', () => {
       { findByReferredUser: jest.fn() } as any,
       { notify: jest.fn() } as any,
       { log: jest.fn() } as any,
-      { credit: jest.fn(), debit: jest.fn() } as any
+      { credit: jest.fn(), debit: jest.fn() } as any,
+      { track: jest.fn() } as any
     );
 
     (service as any).stripe = {

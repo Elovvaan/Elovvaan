@@ -16,6 +16,7 @@ import { CreatorBoard } from '../../database/entities/creator-board.entity';
 import { PaymentEvent } from '../../database/entities/payment-event.entity';
 import { AuditService } from '../../common/audit/audit.service';
 import { WalletService } from '../wallet/wallet.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 interface PaymentJobData {
   eventId: string;
@@ -41,7 +42,8 @@ export class PaymentsService {
     private referralsService: ReferralsService,
     private notificationsService: NotificationsService,
     private auditService: AuditService,
-    private walletService: WalletService
+    private walletService: WalletService,
+    private analyticsService: AnalyticsService
   ) {
     this.stripe = new Stripe(config.get<string>('STRIPE_SECRET_KEY') || '', { apiVersion: '2024-06-20' });
     this.stripeWebhookSecret = config.get<string>('STRIPE_WEBHOOK_SECRET') || '';
