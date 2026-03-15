@@ -68,8 +68,6 @@ services:
         value: 3001
       - key: API_BASE_URL
         value: https://prize-board-backend.onrender.com/api
-      - key: NEXT_PUBLIC_API_BASE_URL
-        value: https://prize-board-backend.onrender.com/api
 
   - type: redis
     name: prize-board-redis
