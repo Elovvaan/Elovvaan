@@ -3,11 +3,15 @@ import { authService } from '../services/authService';
 import { storage } from '../services/storage';
 import type { Role, User } from '../types';
 
+interface SignupResult {
+  requestUrl: string;
+}
+
 interface AuthContextValue {
   user: User | null;
   role: Role;
   login: (email: string, password: string) => Promise<void>;
-  signup: (name: string, email: string, password: string) => Promise<void>;
+  signup: (name: string, email: string, password: string) => Promise<SignupResult>;
   adminLogin: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -31,6 +35,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signup = async (name: string, email: string, password: string) => {
     const result = await authService.signup(name, email, password);
     saveSession(result.user, result.token);
+    return { requestUrl: result.requestUrl };
   };
 
   const adminLogin = async (email: string, password: string) => {
