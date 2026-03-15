@@ -30,15 +30,35 @@ export class AnalyticsService {
   }
 
   async processDailyAggregationJob(day: string) {
+    const dayStart = new Date(`${day}T00:00:00.000Z`);
+    const dayEnd = new Date(`${day}T23:59:59.999Z`);
+
     const [entriesCount, paymentsSuccessCount, boardsFullCount, winnersSelectedCount, grossRevenue] = await Promise.all([
-      this.analyticsEventsRepo.count({ where: { eventName: 'entry_added' } }),
-      this.analyticsEventsRepo.count({ where: { eventName: 'payment_succeeded' } }),
-      this.analyticsEventsRepo.count({ where: { eventName: 'board_full' } }),
-      this.analyticsEventsRepo.count({ where: { eventName: 'winner_selected' } }),
+      this.analyticsEventsRepo
+        .createQueryBuilder('event')
+        .where('event.eventName = :eventName', { eventName: 'entry_added' })
+        .andWhere('event.createdAt >= :dayStart AND event.createdAt <= :dayEnd', { dayStart, dayEnd })
+        .getCount(),
+      this.analyticsEventsRepo
+        .createQueryBuilder('event')
+        .where('event.eventName = :eventName', { eventName: 'payment_succeeded' })
+        .andWhere('event.createdAt >= :dayStart AND event.createdAt <= :dayEnd', { dayStart, dayEnd })
+        .getCount(),
+      this.analyticsEventsRepo
+        .createQueryBuilder('event')
+        .where('event.eventName = :eventName', { eventName: 'board_full' })
+        .andWhere('event.createdAt >= :dayStart AND event.createdAt <= :dayEnd', { dayStart, dayEnd })
+        .getCount(),
+      this.analyticsEventsRepo
+        .createQueryBuilder('event')
+        .where('event.eventName = :eventName', { eventName: 'winner_selected' })
+        .andWhere('event.createdAt >= :dayStart AND event.createdAt <= :dayEnd', { dayStart, dayEnd })
+        .getCount(),
       this.analyticsEventsRepo
         .createQueryBuilder('event')
         .select("COALESCE(SUM((event.metadata->>'amount')::numeric),0)", 'sum')
         .where('event.eventName = :eventName', { eventName: 'payment_succeeded' })
+        .andWhere('event.createdAt >= :dayStart AND event.createdAt <= :dayEnd', { dayStart, dayEnd })
         .getRawOne<{ sum: string }>()
         .then((row) => Number(row?.sum || 0))
     ]);
