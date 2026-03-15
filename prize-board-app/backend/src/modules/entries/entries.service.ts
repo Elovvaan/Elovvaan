@@ -13,7 +13,7 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { QueueService } from '../../common/queues/queue.service';
 import { ENTRY_QUEUE, WINNER_QUEUE } from '../../common/queues/queue.constants';
-import { AnalyticsService } from '../analytics/analytics.service';
+import { RedisService } from '../../common/redis.service';
 
 export interface EntryJobData {
   boardId: string;
@@ -38,7 +38,7 @@ export class EntriesService {
     private notificationsService: NotificationsService,
     @InjectRepository(Payout) private payoutsRepo: Repository<Payout>,
     private queueService: QueueService,
-    private analyticsService: AnalyticsService
+    private redisService: RedisService
   ) {}
 
   async enterBoard(boardId: string, userId: string, paymentId: string) {
@@ -62,111 +62,127 @@ export class EntriesService {
 
   async processEntryJob(data: EntryJobData) {
     const { boardId, userId, paymentId, quantity } = data;
+    const boardLockKey = `lock:board-entry:${boardId}`;
+    const lockValue = `${paymentId}:${Date.now()}`;
+    const locked = await this.redisService.setNx(boardLockKey, lockValue, 10);
+    if (!locked) {
+      throw new BadRequestException('Board is busy processing entries. Please retry.');
+    }
 
-    return this.dataSource.transaction(async (manager) => {
-      const boardRepo = manager.getRepository(Board);
-      const entryRepo = manager.getRepository(Entry);
-      const board = await boardRepo.findOne({ where: { id: boardId }, lock: { mode: 'pessimistic_write' } });
-      if (!board || board.status !== BoardStatus.OPEN) {
-        throw new BadRequestException('Board is not open for entries');
-      }
-
-      const duplicate = await entryRepo.findOne({ where: { payment: { id: paymentId }, externalReference: `${paymentId}:0` } });
-      if (duplicate) {
-        return duplicate;
-      }
-
-      const userEntries = await entryRepo.count({ where: { user: { id: userId }, board: { id: boardId } } });
-      if (userEntries + quantity > EntriesService.MAX_ENTRIES_PER_USER) {
-        throw new ForbiddenException('Entry limit reached');
-      }
-
-      if (board.currentEntries + quantity > board.maxEntries) {
-        board.status = BoardStatus.FULL;
-        await boardRepo.save(board);
-        throw new BadRequestException('Board is full');
-      }
-
-      const payment = await this.paymentsService.assertPaymentSucceeded(paymentId, userId, boardId);
-      const user = await this.usersService.findById(userId);
-      if (!user) {
-        throw new BadRequestException('Invalid user');
-      }
-
-      const paymentRepo = manager.getRepository(Payment);
-      let fraudScore = 0;
-      if (payment.ipAddress) {
-        const sameIpCount = await paymentRepo.count({ where: { ipAddress: payment.ipAddress } });
-        if (sameIpCount >= 5) {
-          fraudScore += 40;
+    try {
+      return await this.dataSource.transaction(async (manager) => {
+        const boardRepo = manager.getRepository(Board);
+        const entryRepo = manager.getRepository(Entry);
+        const board = await boardRepo.findOne({ where: { id: boardId }, lock: { mode: 'pessimistic_write' } });
+        if (!board || board.status !== BoardStatus.OPEN) {
+          throw new BadRequestException('Board is not open for entries');
         }
-      }
 
-      if (payment.paymentMethodFingerprint) {
-        const sameMethodCount = await paymentRepo.count({ where: { paymentMethodFingerprint: payment.paymentMethodFingerprint } });
-        if (sameMethodCount >= 3) {
-          fraudScore += 35;
+        const duplicateEntries = await entryRepo.find({ where: { payment: { id: paymentId } }, order: { createdAt: 'ASC' } });
+        if (duplicateEntries.length > 0) {
+          return duplicateEntries[0];
         }
-      }
 
-      const rapidAccounts = await manager
-        .createQueryBuilder()
-        .select('COUNT(*)', 'count')
-        .from('users', 'u')
-        .where("u.created_at >= NOW() - INTERVAL '15 minutes'")
-        .getRawOne<{ count: string }>();
-      if (Number(rapidAccounts?.count || 0) >= 10) {
-        fraudScore += 25;
-      }
+        const userEntries = await entryRepo.count({ where: { user: { id: userId }, board: { id: boardId } } });
+        if (userEntries + quantity > EntriesService.MAX_ENTRIES_PER_USER) {
+          throw new ForbiddenException('Entry limit reached');
+        }
 
-      const reviewStatus = fraudScore >= 60 ? EntryReviewStatus.FLAGGED : EntryReviewStatus.CLEAN;
+        if (board.currentEntries + quantity > board.maxEntries) {
+          board.status = BoardStatus.FULL;
+          await boardRepo.save(board);
+          throw new BadRequestException('Board is full');
+        }
 
-      const entries: Entry[] = [];
-      for (let i = 0; i < quantity; i += 1) {
-        const entry = entryRepo.create({
-          board,
-          user,
-          payment,
-          externalReference: `${paymentId}:${i}`,
-          fraudScore,
-          reviewStatus
+        const payment = await this.paymentsService.assertPaymentSucceeded(paymentId, userId, boardId);
+        const user = await this.usersService.findById(userId);
+        if (!user) {
+          throw new BadRequestException('Invalid user');
+        }
+
+        const paymentRepo = manager.getRepository(Payment);
+        let fraudScore = 0;
+        if (payment.ipAddress) {
+          const sameIpCount = await paymentRepo.count({ where: { ipAddress: payment.ipAddress } });
+          if (sameIpCount >= 5) {
+            fraudScore += 40;
+          }
+        }
+
+        if (payment.paymentMethodFingerprint) {
+          const sameMethodCount = await paymentRepo.count({ where: { paymentMethodFingerprint: payment.paymentMethodFingerprint } });
+          if (sameMethodCount >= 3) {
+            fraudScore += 35;
+          }
+        }
+
+        const rapidAccounts = await manager
+          .createQueryBuilder()
+          .select('COUNT(*)', 'count')
+          .from('users', 'u')
+          .where("u.created_at >= NOW() - INTERVAL '15 minutes'")
+          .getRawOne<{ count: string }>();
+        if (Number(rapidAccounts?.count || 0) >= 10) {
+          fraudScore += 25;
+        }
+
+        const reviewStatus = fraudScore >= 60 ? EntryReviewStatus.FLAGGED : EntryReviewStatus.CLEAN;
+
+        const entries: Entry[] = [];
+        for (let i = 0; i < quantity; i += 1) {
+          const entry = entryRepo.create({
+            board,
+            user,
+            payment,
+            externalReference: `${paymentId}:${i}`,
+            fraudScore,
+            reviewStatus
+          });
+          entries.push(await entryRepo.save(entry));
+        }
+
+        board.currentEntries += quantity;
+        if (board.currentEntries >= board.maxEntries) {
+          board.status = BoardStatus.FULL;
+        }
+        const updatedBoard = await boardRepo.save(board);
+        const userAfterEntry = await this.usersService.awardXp(userId, 100 * quantity);
+
+        this.logger.log(JSON.stringify({ event: 'entry_created', boardId, userId, paymentId, quantity }));
+        this.notificationsGateway.broadcast('entry_added', { boardId, entryId: entries[0]?.id, quantity });
+        this.notificationsGateway.broadcast('board_progress', { boardId, currentEntries: updatedBoard.currentEntries, maxEntries: updatedBoard.maxEntries });
+        this.notificationsGateway.broadcast('board_update', updatedBoard);
+        await this.boardsService.recordActivity(boardId, 'entry_added', { userId, quantity, currentEntries: updatedBoard.currentEntries });
+        this.notificationsGateway.broadcast('xp_updated', {
+          userId,
+          xp: userAfterEntry.xp,
+          prestigeLevel: userAfterEntry.prestigeLevel
         });
-        entries.push(await entryRepo.save(entry));
-      }
+        await this.notificationsService.notify(userId, 'ENTRY_CONFIRMED', `You have entered ${updatedBoard.title}`);
 
-      board.currentEntries += quantity;
-      if (board.currentEntries >= board.maxEntries) {
-        board.status = BoardStatus.FULL;
-      }
-      const updatedBoard = await boardRepo.save(board);
-      const userAfterEntry = await this.usersService.awardXp(userId, 100 * quantity);
+        if (updatedBoard.status === BoardStatus.FULL) {
+          this.logger.log(JSON.stringify({ event: 'board_full', boardId: updatedBoard.id }));
+          await this.queueService.add(WINNER_QUEUE, 'select-winner', { boardId: updatedBoard.id }, { jobId: `winner:${updatedBoard.id}` });
+        } else if (updatedBoard.maxEntries - updatedBoard.currentEntries <= 5) {
+          await this.notificationsService.notify(userId, 'BOARD_ALMOST_FULL', `${updatedBoard.title} is almost full.`);
+        }
 
-      this.logger.log(JSON.stringify({ event: 'entry_created', boardId, userId, paymentId, quantity }));
-      this.notificationsGateway.broadcast('entry_added', { boardId, entryId: entries[0]?.id, quantity });
-      this.notificationsGateway.broadcast('board_fill_update', { boardId, currentEntries: updatedBoard.currentEntries, maxEntries: updatedBoard.maxEntries });
-      this.notificationsGateway.broadcast('board_progress', { boardId, currentEntries: updatedBoard.currentEntries, maxEntries: updatedBoard.maxEntries });
-      this.notificationsGateway.broadcast('board_update', updatedBoard);
-      await this.boardsService.recordActivity(boardId, 'entry_added', { userId, quantity, currentEntries: updatedBoard.currentEntries });
-      this.notificationsGateway.broadcast('xp_updated', {
-        userId,
-        xp: userAfterEntry.xp,
-        prestigeLevel: userAfterEntry.prestigeLevel
+        const fillPct = Number(((updatedBoard.currentEntries / Math.max(updatedBoard.maxEntries, 1)) * 100).toFixed(2));
+        await this.redisService.set(`board:fill:${boardId}`, JSON.stringify({
+          currentEntries: updatedBoard.currentEntries,
+          maxEntries: updatedBoard.maxEntries,
+          fillPct,
+          status: updatedBoard.status
+        }), 600);
+
+        return entries[0];
       });
-      await this.notificationsService.notify(userId, 'ENTRY_CONFIRMED', `You have entered ${updatedBoard.title}`);
-      await this.analyticsService.track({ eventName: 'entry_added', userId, boardId, metadata: { quantity } });
-
-      if (updatedBoard.status === BoardStatus.FULL) {
-        this.logger.log(JSON.stringify({ event: 'board_full', boardId: updatedBoard.id }));
-        this.notificationsGateway.broadcast('board_full', { boardId: updatedBoard.id, currentEntries: updatedBoard.currentEntries, maxEntries: updatedBoard.maxEntries });
-        await this.notificationsService.notify(userId, 'BOARD_FULL', `${updatedBoard.title} is now full.`);
-        await this.analyticsService.track({ eventName: 'board_full', boardId: updatedBoard.id, metadata: { maxEntries: updatedBoard.maxEntries } });
-        await this.queueService.add(WINNER_QUEUE, 'select-winner', { boardId: updatedBoard.id }, { jobId: `winner:${updatedBoard.id}` });
-      } else if (updatedBoard.maxEntries - updatedBoard.currentEntries <= 5) {
-        await this.notificationsService.notify(userId, 'BOARD_ALMOST_FULL', `${updatedBoard.title} is almost full.`);
+    } finally {
+      const lockOwner = await this.redisService.get(boardLockKey);
+      if (lockOwner === lockValue) {
+        await this.redisService.del(boardLockKey);
       }
-
-      return entries[0];
-    });
+    }
   }
 
   async processWinnerJob(boardId: string) {

@@ -40,8 +40,17 @@ export class BoardsService {
   }
 
   async create(dto: CreateBoardDto) {
+    if (dto.maxEntries <= 0) {
+      throw new BadRequestException('Board maxEntries must be greater than zero');
+    }
+
     const board = this.boardsRepo.create({ ...dto, currentEntries: 0, status: BoardStatus.OPEN });
     const created = await this.boardsRepo.save(board);
+    await this.redis.set(
+      `board:fill:${created.id}`,
+      JSON.stringify({ currentEntries: created.currentEntries, maxEntries: created.maxEntries, fillPct: 0, status: created.status }),
+      600
+    );
     await this.redis.del('boards:list', 'boards:trending');
     return created;
   }
@@ -94,6 +103,16 @@ export class BoardsService {
     if (board.currentEntries >= board.maxEntries) board.status = BoardStatus.FULL;
 
     const updated = await this.boardsRepo.save(board);
+    await this.redis.set(
+      `board:fill:${boardId}`,
+      JSON.stringify({
+        currentEntries: updated.currentEntries,
+        maxEntries: updated.maxEntries,
+        fillPct: Number(((updated.currentEntries / Math.max(updated.maxEntries, 1)) * 100).toFixed(2)),
+        status: updated.status
+      }),
+      600
+    );
     await this.redis.del('boards:list', `boards:detail:${boardId}`, 'boards:trending');
     return updated;
   }

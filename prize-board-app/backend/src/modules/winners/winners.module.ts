@@ -5,9 +5,11 @@ import { WinnersService } from './winners.service';
 import { WinnersController } from './winners.controller';
 import { Entry } from '../../database/entities/entry.entity';
 import { Board } from '../../database/entities/board.entity';
+import { AuditModule } from '../../common/audit/audit.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Winner, Entry, Board])],
+  imports: [TypeOrmModule.forFeature([Winner, Entry, Board]), AuditModule, WalletModule],
   providers: [WinnersService],
   controllers: [WinnersController],
   exports: [WinnersService]
