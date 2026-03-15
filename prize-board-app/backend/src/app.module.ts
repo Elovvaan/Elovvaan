@@ -14,18 +14,21 @@ import { ReferralsModule } from './modules/referrals/referrals.module';
 import { GlobalRateLimitMiddleware } from './common/rate-limit.middleware';
 import { CreatorsModule } from './modules/creators/creators.module';
 import { HealthController } from './health.controller';
+import { validateEnv } from './config/env.validation';
+import { AuditModule } from './common/audit/audit.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     QueueModule,
+    AuditModule,
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true
+        synchronize: config.get<string>('NODE_ENV') !== 'production'
       })
     }),
     AuthModule,

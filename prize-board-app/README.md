@@ -24,6 +24,8 @@ Admin: `http://localhost:3001`
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
 - `GET /api/me`
 - `GET /api/boards`
 - `GET /api/boards/:id`
@@ -60,3 +62,5 @@ Use the **repository root** `render.yaml` when deploying with Render Blueprint. 
 - `worker` Dockerfile at `prize-board-app/worker/Dockerfile`
 - `redis` and `postgres` infra resources
 
+
+- `docs/mvp-audit-and-plan.md`

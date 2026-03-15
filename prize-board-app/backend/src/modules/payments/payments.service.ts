@@ -13,6 +13,8 @@ import { ENTRY_QUEUE, PAYMENT_QUEUE } from '../../common/queues/queue.constants'
 import { ReferralsService } from '../referrals/referrals.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreatorBoard } from '../../database/entities/creator-board.entity';
+import { PaymentEvent } from '../../database/entities/payment-event.entity';
+import { AuditService } from '../../common/audit/audit.service';
 
 interface PaymentJobData {
   eventId: string;
@@ -31,11 +33,13 @@ export class PaymentsService {
     @InjectRepository(Payment) private paymentsRepo: Repository<Payment>,
     @InjectRepository(Entry) private entriesRepo: Repository<Entry>,
     @InjectRepository(CreatorBoard) private creatorBoardsRepo: Repository<CreatorBoard>,
+    @InjectRepository(PaymentEvent) private paymentEventsRepo: Repository<PaymentEvent>,
     private usersService: UsersService,
     private boardsService: BoardsService,
     private queueService: QueueService,
     private referralsService: ReferralsService,
-    private notificationsService: NotificationsService
+    private notificationsService: NotificationsService,
+    private auditService: AuditService
   ) {
     this.stripe = new Stripe(config.get<string>('STRIPE_SECRET_KEY') || '', { apiVersion: '2024-06-20' });
     this.stripeWebhookSecret = config.get<string>('STRIPE_WEBHOOK_SECRET') || '';
@@ -117,6 +121,20 @@ export class PaymentsService {
       return { ok: true, ignored: true };
     }
 
+    const existingEvent = await this.paymentEventsRepo.findOne({ where: { providerEventId: event.id } });
+    if (existingEvent) {
+      return { ok: true, duplicate: true };
+    }
+
+    await this.paymentEventsRepo.save(
+      this.paymentEventsRepo.create({
+        providerEventId: event.id,
+        paymentIntentId,
+        eventType: event.type,
+        isProcessed: false
+      })
+    );
+
     await this.queueService.add<PaymentJobData>(
       PAYMENT_QUEUE,
       'process-payment-event',
@@ -129,9 +147,27 @@ export class PaymentsService {
 
   async processPaymentJob(data: PaymentJobData) {
     const { eventType, paymentIntentId, eventId } = data;
+    const paymentEvent = await this.paymentEventsRepo.findOne({ where: { providerEventId: eventId } });
+
+    if (!paymentEvent) {
+      this.logger.warn(JSON.stringify({ event: 'payment_event_missing', eventId }));
+      return;
+    }
+
+    if (paymentEvent.isProcessed) {
+      this.logger.log(JSON.stringify({ event: 'payment_event_already_processed', eventId }));
+      return;
+    }
 
     if (eventType === 'payment_intent.succeeded') {
       const payment = await this.updateStatusByIntentId(paymentIntentId, PaymentStatus.SUCCEEDED, eventId);
+      await this.auditService.log({
+        actorUserId: payment.userId,
+        action: 'payment.succeeded',
+        targetType: 'payment',
+        targetId: payment.id,
+        metadata: { paymentIntentId, eventId }
+      });
       this.logger.log(JSON.stringify({ event: 'payment_confirmed', paymentId: payment.id, paymentIntentId }));
       await this.boardsService.applyEscrowRevenue(payment.boardId, Number(payment.amount), Number(payment.creatorRevenue), Number(payment.platformRevenue));
 
@@ -154,8 +190,19 @@ export class PaymentsService {
     }
 
     if (eventType === 'payment_intent.payment_failed') {
-      await this.updateStatusByIntentId(paymentIntentId, PaymentStatus.FAILED, eventId);
+      const payment = await this.updateStatusByIntentId(paymentIntentId, PaymentStatus.FAILED, eventId);
+      await this.auditService.log({
+        actorUserId: payment.userId,
+        action: 'payment.failed',
+        targetType: 'payment',
+        targetId: payment.id,
+        metadata: { paymentIntentId, eventId }
+      });
     }
+
+    paymentEvent.isProcessed = true;
+    paymentEvent.processedAt = new Date();
+    await this.paymentEventsRepo.save(paymentEvent);
   }
 
   async updateStatusByIntentId(intentId: string, status: PaymentStatus, webhookEventId?: string) {

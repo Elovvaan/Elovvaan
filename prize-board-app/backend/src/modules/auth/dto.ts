@@ -14,3 +14,8 @@ export class RegisterDto {
 }
 
 export class LoginDto extends RegisterDto {}
+
+export class RefreshTokenDto {
+  @IsString()
+  refreshToken!: string;
+}
