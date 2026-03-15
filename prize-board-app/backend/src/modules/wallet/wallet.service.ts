@@ -37,6 +37,17 @@ export class WalletService {
     return account?.balanceCents || 0;
   }
 
+  async listTransactions(userId: string, limit = 50) {
+    const account = await this.walletAccountsRepo.findOne({ where: { user: { id: userId } } });
+    if (!account) return [];
+
+    return this.walletTransactionsRepo.find({
+      where: { walletAccount: { id: account.id } },
+      order: { createdAt: 'DESC' },
+      take: limit
+    });
+  }
+
   private async applyTransaction(
     userId: string,
     type: WalletTransactionType,

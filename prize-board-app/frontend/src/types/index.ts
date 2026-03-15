@@ -10,6 +10,7 @@ export interface Board {
   soldSpots: number;
   closesAt: string;
   imageUrl?: string;
+  winnerId?: string;
 }
 
 export interface User {
@@ -20,4 +21,27 @@ export interface User {
   wins: number;
   entries: number;
   role: Exclude<Role, 'guest'>;
+}
+
+export interface WalletTransaction {
+  id: string;
+  type: 'CREDIT' | 'DEBIT';
+  amountCents: number;
+  balanceAfterCents: number;
+  reason: string;
+  referenceId: string;
+  createdAt: string;
+}
+
+export interface WalletLedger {
+  balanceCents: number;
+  transactions: WalletTransaction[];
+}
+
+export interface UserNotification {
+  id?: string;
+  userId?: string;
+  type: string;
+  message: string;
+  createdAt?: string;
 }

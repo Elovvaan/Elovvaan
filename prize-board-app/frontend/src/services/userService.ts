@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { User } from '../types';
+import type { User, UserNotification, WalletLedger } from '../types';
 
 export const userService = {
   me: async () => {
@@ -11,7 +11,11 @@ export const userService = {
     return data;
   },
   notifications: async () => {
-    const { data } = await api.get<string[]>('/notifications');
+    const { data } = await api.get<UserNotification[]>('/notifications');
     return data;
   },
+  walletLedger: async () => {
+    const { data } = await api.get<WalletLedger>('/wallet/ledger');
+    return data;
+  }
 };

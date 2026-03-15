@@ -1,4 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-body { @apply bg-slate-100 text-slate-900; }
+
+:root {
+  --s2w-primary: #7c3aed;
+  --s2w-accent: #14b8a6;
+}
+
+body {
+  @apply text-slate-900;
+  background: radial-gradient(circle at top right, rgba(20, 184, 166, 0.12), transparent 40%), #f5f3ff;
+}

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Swipe2WinLogo } from './Swipe2WinLogo';
 
 const links = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -20,16 +21,16 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 border-r bg-white p-4">
-      <h2 className="mb-4 text-lg font-bold">Swipe2Win Admin</h2>
+    <aside className="w-64 border-r border-brand-100 bg-white p-4">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-brand-700"><Swipe2WinLogo className="h-7 w-7" />Swipe2Win Admin</h2>
       <nav className="space-y-2">
         {links.map((link) => (
-          <Link key={link.href} href={link.href} className="block rounded px-3 py-2 hover:bg-slate-100">
+          <Link key={link.href} href={link.href} className="block rounded px-3 py-2 hover:bg-brand-50">
             {link.label}
           </Link>
         ))}
       </nav>
-      <button onClick={logout} className="mt-8 rounded bg-slate-900 px-3 py-2 text-white" type="button">Logout</button>
+      <button onClick={logout} className="mt-8 rounded bg-brand-600 px-3 py-2 text-white" type="button">Logout</button>
     </aside>
   );
 }
