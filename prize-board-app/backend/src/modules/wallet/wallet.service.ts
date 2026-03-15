@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { WalletAccount } from '../../database/entities/wallet-account.entity';
 import { WalletTransaction, WalletTransactionType } from '../../database/entities/wallet-transaction.entity';
 import { User } from '../../database/entities/user.entity';
@@ -22,14 +22,14 @@ export class WalletService {
     return account;
   }
 
-  async credit(userId: string, amountCents: number, reason: string, referenceId: string, metadata: Record<string, unknown> = {}) {
+  async credit(userId: string, amountCents: number, reason: string, referenceId: string, metadata: Record<string, unknown> = {}, transactionManager?: EntityManager) {
     if (amountCents <= 0) throw new BadRequestException('Credit amount must be greater than zero');
-    return this.applyTransaction(userId, WalletTransactionType.CREDIT, amountCents, reason, referenceId, metadata);
+    return this.applyTransaction(userId, WalletTransactionType.CREDIT, amountCents, reason, referenceId, metadata, transactionManager);
   }
 
-  async debit(userId: string, amountCents: number, reason: string, referenceId: string, metadata: Record<string, unknown> = {}) {
+  async debit(userId: string, amountCents: number, reason: string, referenceId: string, metadata: Record<string, unknown> = {}, transactionManager?: EntityManager) {
     if (amountCents <= 0) throw new BadRequestException('Debit amount must be greater than zero');
-    return this.applyTransaction(userId, WalletTransactionType.DEBIT, amountCents, reason, referenceId, metadata);
+    return this.applyTransaction(userId, WalletTransactionType.DEBIT, amountCents, reason, referenceId, metadata, transactionManager);
   }
 
   async getBalance(userId: string) {
@@ -43,9 +43,10 @@ export class WalletService {
     amountCents: number,
     reason: string,
     referenceId: string,
-    metadata: Record<string, unknown>
+    metadata: Record<string, unknown>,
+    transactionManager?: EntityManager
   ) {
-    return this.dataSource.transaction(async (manager) => {
+    const executeTransaction = async (manager: EntityManager) => {
       const txRepo = manager.getRepository(WalletTransaction);
       const existing = await txRepo.findOne({ where: { referenceId } });
       if (existing) {
@@ -74,6 +75,13 @@ export class WalletService {
       });
 
       return txRepo.save(transaction);
-    });
+    };
+
+    // If a transaction manager is provided, use it directly (join existing transaction)
+    // Otherwise, create a new transaction
+    if (transactionManager) {
+      return executeTransaction(transactionManager);
+    }
+    return this.dataSource.transaction(executeTransaction);
   }
 }

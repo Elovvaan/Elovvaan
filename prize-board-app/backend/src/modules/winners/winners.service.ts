@@ -124,7 +124,7 @@ export class WinnersService {
         await this.walletService.credit(userId, prizeCents, 'WINNER_CLAIM', `winner-claim:${saved.id}`, {
           boardId,
           winnerId: saved.id
-        });
+        }, manager);
       }
 
       return saved;
