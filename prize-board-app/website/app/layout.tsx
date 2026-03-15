@@ -5,7 +5,11 @@ import { SiteFooter } from '@/components/site-footer';
 
 export const metadata: Metadata = {
   title: 'Swipe2Win | Official Site',
-  description: 'Swipe. Level up. Win real rewards with Swipe2Win.'
+  description: 'Swipe. Level up. Win real rewards with Swipe2Win.',
+  metadataBase: new URL('https://swipe2win.com'),
+  icons: {
+    icon: '/favicon.svg'
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

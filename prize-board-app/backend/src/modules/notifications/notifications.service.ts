@@ -64,6 +64,14 @@ export class NotificationsService {
     return this.queueService.waitForCompletion<Notification>(job);
   }
 
+  async listForUser(userId: string) {
+    return this.notificationsRepo.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+      take: 50
+    });
+  }
+
   async processNotificationJob(data: NotificationJobData) {
     const notification = await this.notificationsRepo.save(this.notificationsRepo.create(data));
     this.notificationsGateway.broadcast('push_notification', {
