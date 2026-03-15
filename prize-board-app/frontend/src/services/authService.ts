@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { API_BASE_URL, api, buildApiUrl } from './api';
+import { api, buildApiUrl } from './api';
 import type { User } from '../types';
 
 interface AuthResponse {
@@ -15,6 +15,9 @@ interface SignupResult extends AuthResponse {
   requestUrl: string;
 }
 
+const AUTH_LOGIN_PATH = '/auth/login';
+const AUTH_REGISTER_PATH = '/auth/register';
+
 const mapAuthResponse = async (path: string, payload: Record<string, unknown>) => {
   const { data } = await api.post<BackendAuthResponse>(path, payload);
   const token = data.accessToken;
@@ -29,16 +32,16 @@ const mapAuthResponse = async (path: string, payload: Record<string, unknown>) =
 
 export const authService = {
   login: async (email: string, password: string) => {
-    return mapAuthResponse('/auth/login', { email, password });
+    return mapAuthResponse(AUTH_LOGIN_PATH, { email, password });
   },
   signup: async (_name: string, email: string, password: string): Promise<SignupResult> => {
-    const signupUrl = `${API_BASE_URL}/auth/register`;
+    const signupUrl = buildApiUrl(AUTH_REGISTER_PATH);
     const payload = { email, password };
 
     console.info('[signup] sending request', { url: signupUrl, payload });
 
     try {
-      const result = await mapAuthResponse(signupUrl, payload);
+      const result = await mapAuthResponse(AUTH_REGISTER_PATH, payload);
       console.info('[signup] received response', { url: signupUrl });
       return { ...result, requestUrl: signupUrl };
     } catch (error) {
