@@ -1,4 +1,20 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '@/lib/api';
+import { authStorage } from '@/lib/auth';
+
+type FeedItem = {
+  type: 'BOARD' | 'CHALLENGE';
+  score: number;
+  item: {
+    id: string;
+    title?: string;
+    name?: string;
+    category?: { id: string; name: string };
+  };
+};
 
 export default function HomePage() {
   const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -65,6 +81,27 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+
+      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+
+      {rankedFeed.length > 0 ? (
+        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+          <h2 className="font-semibold">Recommended for you</h2>
+          <div className="mt-3 space-y-2">
+            {rankedFeed.slice(0, 6).map((feedItem) => (
+              <div key={`${feedItem.type}-${feedItem.item.id}`} className="rounded-xl border border-slate-700 p-3">
+                <p className="text-sm font-medium">{feedItem.item.title ?? feedItem.item.name ?? feedItem.item.id}</p>
+                <p className="text-xs text-slate-400">{feedItem.type} • score {feedItem.score}</p>
+                <div className="mt-2 flex gap-2 text-xs">
+                  <button className="rounded bg-slate-700 px-2 py-1" onClick={() => trackAction(feedItem, 'JOIN')}>Join</button>
+                  <button className="rounded bg-slate-700 px-2 py-1" onClick={() => trackAction(feedItem, 'SAVE')}>Save</button>
+                  <button className="rounded bg-slate-700 px-2 py-1" onClick={() => trackAction(feedItem, 'SWIPE_LEFT')}>Dismiss</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
