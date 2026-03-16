@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { BehaviorEventType, ChallengeStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class RecommendationsService {
+  private readonly logger = new Logger(RecommendationsService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async getHome(userId: string) {
@@ -12,6 +14,8 @@ export class RecommendationsService {
       this.recommendedBoards(userId),
       this.recommendedChallenges(userId),
     ]);
+
+    this.logger.debug(`Home recommendations computed user=${userId} boards=${rankedBoards.length} challenges=${rankedChallenges.length}`);
 
     return {
       metrics,
@@ -100,13 +104,17 @@ export class RecommendationsService {
   }
 
   async logBehaviorEvent(userId: string, input: { eventType: BehaviorEventType; itemType: string; itemId: string; metadata?: unknown }) {
+    const sanitizedMetadata = input.metadata && typeof input.metadata === 'object' ? (input.metadata as Record<string, unknown>) : undefined;
+
+    this.logger.debug(`Behavior event user=${userId} type=${input.eventType} itemType=${input.itemType} itemId=${input.itemId}`);
+
     return this.prisma.userBehaviorEvent.create({
       data: {
         userId,
         eventType: input.eventType,
         itemType: input.itemType,
         itemId: input.itemId,
-        metadata: input.metadata as object | undefined,
+        metadata: sanitizedMetadata,
       },
     });
   }
