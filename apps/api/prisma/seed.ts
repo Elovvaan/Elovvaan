@@ -1,11 +1,11 @@
-import { PrismaClient, BoardStatus, ChallengeStatus, ChallengeType } from '@prisma/client';
+import { PrismaClient, BoardStatus } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
   const categories = await Promise.all(
-    ['FPS', 'Sports', 'Strategy', 'Arcade', 'Trivia'].map((name) =>
+    ['FPS', 'Sports', 'Strategy'].map((name) =>
       prisma.category.upsert({
         where: { slug: name.toLowerCase() },
         create: { name, slug: name.toLowerCase() },
@@ -21,19 +21,15 @@ async function main() {
     create: {
       email: 'demo@swipe2win.app',
       passwordHash,
-      profile: { create: { username: 'demoPlayer', onboardingDone: true } },
-      wallet: { create: { balance: 250, creditBalance: 50 } },
-      skillProfile: { create: { skillScore: 1060, winRate: 0.62, acceptanceRate: 0.74, avgEntryFee: 12 } },
-      preferences: {
+      profile: {
         create: {
-          preferredCategoryIds: [categories[0].id, categories[1].id],
-          minEntryFee: 5,
-          maxEntryFee: 25,
-          preferredModes: ['public', 'direct'],
+          username: 'demoPlayer',
+          onboardingDone: true,
+          bio: 'Demo account for local development',
         },
       },
+      wallet: { create: { balance: 250, creditBalance: 50 } },
     },
-    include: { wallet: true },
   });
 
   await prisma.board.createMany({
@@ -60,37 +56,22 @@ async function main() {
         status: BoardStatus.OPEN,
         creatorId: user.id,
       },
-    ],
-    skipDuplicates: true,
-  });
-
-  await prisma.challenge.createMany({
-    data: [
       {
-        title: '1v1 Aim Duel',
-        description: 'Public challenge in FPS',
-        categoryId: categories[0].id,
-        type: ChallengeType.PUBLIC,
-        status: ChallengeStatus.OPEN,
-        entryFee: 12,
-        prizePool: 24,
-        creatorId: user.id,
-      },
-      {
-        title: 'Trivia Callout',
-        description: 'Direct challenge from creator',
-        categoryId: categories[4].id,
-        type: ChallengeType.DIRECT,
-        status: ChallengeStatus.OPEN,
+        title: 'Strategy Sprint',
+        description: 'Mid-stakes board with quick fill potential',
+        categoryId: categories[2].id,
         entryFee: 8,
-        prizePool: 16,
+        prizePool: 120,
+        spotCount: 15,
+        filledSpots: 4,
+        status: BoardStatus.OPEN,
         creatorId: user.id,
       },
     ],
     skipDuplicates: true,
   });
 
-  console.log('Seed complete');
+  console.log('Seed complete: demo user, wallet, categories, and boards');
 }
 
 main()

@@ -1,10 +1,4 @@
-import { SwipeCard } from '@/components/swipe-card';
-
-const cards = [
-  { title: 'Night Clash Prize Board', subtitle: '18 spots • $10 entry • $180 pool', cta: 'Prize Board' },
-  { title: '1v1 Aim Duel', subtitle: 'Public VS • $12 entry • Fast match', cta: 'VS Challenge' },
-  { title: 'Creator Battle: Saturday Rush', subtitle: 'Featured arena event', cta: 'Featured Battle' },
-];
+import Link from 'next/link';
 
 export default function HomePage() {
   return (
@@ -12,13 +6,25 @@ export default function HomePage() {
       <header className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900 p-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Swipe2Win</h1>
-          <span className="rounded-full bg-slate-800 px-3 py-1 text-xs">$250.00</span>
+          <span className="rounded-full bg-slate-800 px-3 py-1 text-xs">Phase 1–2</span>
         </div>
-        <input className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Search boards, arenas, challenges" />
+        <p className="text-sm text-slate-400">Foundation rebuild complete: auth, profile, wallet, boards, and join flow.</p>
       </header>
-      {cards.map((card) => (
-        <SwipeCard key={card.title} {...card} />
-      ))}
+
+      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h2 className="font-semibold">Get started</h2>
+        <div className="mt-3 grid gap-2 text-sm">
+          <Link href="/auth/register" className="rounded-xl border border-slate-700 px-3 py-2">
+            Create account
+          </Link>
+          <Link href="/auth/login" className="rounded-xl border border-slate-700 px-3 py-2">
+            Sign in
+          </Link>
+          <Link href="/boards" className="rounded-xl border border-slate-700 px-3 py-2">
+            Browse boards
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
