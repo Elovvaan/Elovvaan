@@ -175,3 +175,39 @@ pnpm --filter @swipe2win/api build
 pnpm --filter @swipe2win/web build
 pnpm --filter @swipe2win/admin build
 ```
+
+## First local runtime validation (after `pnpm install` works)
+
+Run **all commands from repo root**:
+
+```bash
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
+pnpm db:generate
+pnpm db:migrate
+pnpm db:seed
+```
+
+Start services (separate shells, from root):
+
+```bash
+pnpm dev:api
+pnpm dev:web
+```
+
+Validation flow for recommendations and feed:
+
+1. Register/login from web (`/auth/register` or `/auth/login`) to get a local session token.
+2. Verify home recommendations API returns feed data (`GET /recommendations/home`) while authenticated.
+3. Trigger interaction logging via UI actions (join/save/dismiss) and verify events are accepted (`POST /recommendations/events`).
+4. Confirm boards list and board detail pages still work with seeded data.
+
+Useful one-off root commands:
+
+```bash
+pnpm --filter @swipe2win/api prisma:generate
+pnpm --filter @swipe2win/api prisma:migrate
+pnpm --filter @swipe2win/api prisma:seed
+pnpm --filter @swipe2win/api dev
+pnpm --filter @swipe2win/web dev
+```
