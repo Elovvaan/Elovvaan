@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum BoardStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String
+  role         Role        @default(USER)
+  credits      Int         @default(0)
+  entries      Entry[]
+  boardCells   BoardCell[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Board {
+  id            String      @id @default(cuid())
+  title         String
+  slug          String      @unique
+  description   String?
+  status        BoardStatus @default(DRAFT)
+  pricePerEntry Decimal     @db.Decimal(10, 2)
+  totalCells    Int
+  filledCells   Int         @default(0)
+  cells         BoardCell[]
+  entries       Entry[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model BoardCell {
+  id         String    @id @default(cuid())
+  boardId    String
+  board      Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cellNumber Int
+  isClaimed  Boolean   @default(false)
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id])
+  claimedAt  DateTime?
+  entry      Entry?
+  createdAt  DateTime  @default(now())
+
+  @@unique([boardId, cellNumber])
+}
+
+model Entry {
+  id          String   @id @default(cuid())
+  userId      String
+  boardId     String
+  boardCellId String   @unique
+  amountPaid  Decimal  @db.Decimal(10, 2)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board       Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardCell   BoardCell @relation(fields: [boardCellId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
