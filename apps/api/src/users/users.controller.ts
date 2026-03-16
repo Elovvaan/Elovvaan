@@ -1,18 +1,15 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
-@ApiTags('users')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('users')
+@UseGuards(JwtAuthGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private usersService: UsersService) {}
 
-  @Get('me/entries')
-  getMyEntries(@CurrentUser('id') userId: string) {
-    return this.usersService.getMyEntries(userId);
+  @Get('me')
+  me(@CurrentUser() user: { id: string }) {
+    return this.usersService.me(user.id);
   }
 }

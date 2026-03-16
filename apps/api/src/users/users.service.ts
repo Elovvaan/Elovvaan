@@ -3,16 +3,12 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) {}
 
-  getMyEntries(userId: string) {
-    return this.prisma.entry.findMany({
-      where: { userId },
-      include: {
-        board: { select: { id: true, title: true, slug: true, status: true } },
-        boardCell: { select: { id: true, cellNumber: true } },
-      },
-      orderBy: { createdAt: 'desc' },
+  me(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true, wallet: true, skillProfile: true, preferences: true },
     });
   }
 }

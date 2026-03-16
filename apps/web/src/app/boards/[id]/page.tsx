@@ -1,32 +1,11 @@
-'use client';
-
-import { BoardGrid } from '@/components/board-grid';
-import { Nav } from '@/components/nav';
-import { Board, apiFetch } from '@/lib/api';
-import { authStorage } from '@/lib/auth';
-import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-
-export default function BoardDetailsPage() {
-  const { id } = useParams<{ id: string }>();
-  const [board, setBoard] = useState<Board | null>(null);
-  const [selected, setSelected] = useState<number>();
-
-  useEffect(() => {
-    const token = authStorage.get();
-    if (!token) return;
-    apiFetch<Board>(`/boards/${id}`, {}, token).then(setBoard);
-  }, [id]);
-
-  async function claim() {
-    const token = authStorage.get();
-    if (!token || !selected) return;
-    await apiFetch(`/boards/${id}/claim`, { method: 'POST', body: JSON.stringify({ cellNumber: selected }) }, token);
-    const refreshed = await apiFetch<Board>(`/boards/${id}`, {}, token);
-    setBoard(refreshed);
-  }
-
-  if (!board) return <p>Loading...</p>;
-
-  return <div className="space-y-4"><Nav /><h1 className="text-2xl font-semibold">{board.title}</h1><p>Status: {board.status} | Price: ${board.pricePerEntry}</p><p>{board.filledCells}/{board.totalCells} claimed</p><BoardGrid cells={board.cells ?? []} selected={selected} onSelect={setSelected} /><button onClick={claim} className="rounded bg-blue-600 px-4 py-2 text-white">Claim selected cell</button></div>;
+export default function BoardDetailPage({ params }: { params: { id: string } }) {
+  return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Board: {params.id}</h1>
+      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p className="text-sm text-slate-300">Provably fair winner picker structure is scaffolded in backend service layer.</p>
+        <button className="mt-4 w-full rounded-xl bg-emerald-600 py-3 font-semibold">Join Board</button>
+      </section>
+    </div>
+  );
 }
