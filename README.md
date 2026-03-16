@@ -1,115 +1,120 @@
-# Swipe2Win MVP Rebuild
+# Swipe2Win Rebuild Foundation (Phase 1 + Phase 2)
 
-## 1) Proposed Architecture
+This repository now focuses on the foundation rebuild only:
+- **Phase 1:** monorepo baseline, auth, users/profile, wallet
+- **Phase 2:** boards module, board listing/details, and board join flow
 
-### Stack
-- Frontend: Next.js 14 + TypeScript + TailwindCSS
-- Backend: NestJS 10 + TypeScript
-- Database: PostgreSQL + Prisma
-- Cache-ready layer: Redis (env/config ready)
-- Auth: JWT access tokens + refresh tokens persisted in DB
-- State management: React Query + server/component local state
+Advanced AI/recommendations/creator-economy modules are intentionally deferred.
 
-### Monorepo Layout
+## Monorepo structure
+
 ```txt
 apps/
-  api/                # NestJS API
+  api/                      # NestJS backend
     prisma/
-      schema.prisma
-      seed.ts
+      schema.prisma         # Prisma models
+      seed.ts               # Local seed script
     src/
+      app.module.ts
       auth/
       users/
+      profiles/
       wallet/
       boards/
-      challenges/
-      arena/
-      recommendations/
-      profiles/
-      leaderboard/
-      common/
       prisma/
-  web/                # Next.js mobile-first app
+      common/
+      health/
+
+  web/                      # Next.js frontend
     src/app/
-      auth/login
-      auth/register
-      onboarding
-      arena
-      boards
-      boards/[id]
-      challenges/[id]
-      create
-      profile
-      wallet
-      page.tsx        # Swipe home feed
+      page.tsx              # Foundation landing
+      auth/login/
+      auth/register/
+      boards/
+      boards/[id]/
+      profile/
+      wallet/
     src/components/
       bottom-nav.tsx
-      swipe-card.tsx
+      board-join-button.tsx
 ```
 
-### System Design
-- Modular REST backend with isolated service layers per domain.
-- Prisma models structured for transactional wallet/entry/payout workflows.
-- Deterministic recommendation scoring for MVP AI layer.
-- Feed/arena endpoints designed for future ranking pipelines and realtime events.
-- UI organized around mobile-first bottom-nav architecture and swipe cards.
+## Backend setup (NestJS)
 
-## 2) Database Schema Design
+Implemented modules:
+- `AuthModule` (`/auth/register`, `/auth/login`, `/auth/refresh`)
+- `UsersModule` (`/users/me`)
+- `ProfilesModule` (`/profile/me`)
+- `WalletModule` (`/wallet`, `/wallet/transactions`, `/wallet/deposit`, `/wallet/withdraw`)
+- `BoardsModule` (`/boards`, `/boards/:id`, `/boards/:id/join`)
 
-Prisma models include:
-- Auth/User: `User`, `Profile`, `RefreshToken`
-- Wallet: `Wallet`, `WalletTransaction`
-- Boards: `Board`, `BoardEntry`, `BoardPrize`
-- Challenges: `Challenge`, `ChallengeParticipant`, `ChallengeResult`
-- Discovery: `Category`, `Tag`, `FeaturedContent`, `SavedItem`
-- AI/Recommendation: `UserSkillProfile`, `UserPreference`, `MatchmakingScore`, `ChallengeRecommendation`, `UserRivalry`, `UserBehaviorEvent`
+`AppModule` currently wires only the foundation + boards modules.
 
-See full schema in `apps/api/prisma/schema.prisma`.
+## Frontend setup (Next.js)
 
-## 3) API Modules + Endpoints
-
-- Auth: `/auth/register`, `/auth/login`, `/auth/refresh`
-- User: `/users/me`
-- Wallet: `/wallet`, `/wallet/transactions`, `/wallet/deposit`, `/wallet/withdraw`
-- Boards: `/boards`, `/boards/:id`, `/boards/:id/join`
-- Challenges: `/challenges`, `/challenges/:id`, `/challenges/:id/accept`
-- Arena: `/arena/feed`
-- Recommendations: `/recommendations/home`, `/recommendations/boards`, `/recommendations/challenges`
-- Profile: `/profile/me`
-- Leaderboard scaffold: `/leaderboard`
-
-## 4) Frontend Screens
-
-Implemented routes:
-- `/` (swipe home feed)
-- `/arena`
-- `/boards`
-- `/boards/[id]`
-- `/challenges/[id]`
-- `/create`
-- `/profile`
-- `/wallet`
-- `/onboarding`
+Implemented screens for this phase:
+- `/` landing/start page
 - `/auth/login`
 - `/auth/register`
+- `/boards`
+- `/boards/[id]`
+- `/profile`
+- `/wallet`
 
-## 5) Setup Instructions
+The board detail screen supports joining a board via API token auth.
+
+## Prisma schema (foundation-compatible)
+
+Current schema includes foundational models used now and keeps compatibility for future phases:
+- `User`, `Profile`, `RefreshToken`
+- `Wallet`, `WalletTransaction`
+- `Category`, `Board`, `BoardEntry`, `BoardPrize`
+
+Future-phase models remain in schema for forward compatibility, but are not wired into runtime modules.
+
+## Board join flow
+
+`POST /boards/:id/join` performs, in one transaction:
+1. Validate board is open and not full
+2. Validate user has not already joined
+3. Validate wallet and sufficient funds
+4. Create `BoardEntry`
+5. Increment `filledSpots` and mark board `FULL` when needed
+6. Deduct wallet balance and write `WalletTransaction` (`ENTRY_FEE`)
+
+## Seed data
+
+`apps/api/prisma/seed.ts` now creates:
+- categories (`FPS`, `Sports`, `Strategy`)
+- demo user (`demo@swipe2win.app` / `Passw0rd!`)
+- demo profile + wallet
+- 3 open boards for local testing
+
+## Local setup instructions
 
 ### Prerequisites
 - Node.js 20+
 - pnpm 9+
 - PostgreSQL 14+
-- Redis (optional for now, required for future queue/caching)
 
-### Install
+### Install dependencies
 ```bash
 pnpm install
 ```
 
-### Configure env
-```bash
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env.local
+### Environment variables
+Create env files:
+
+`apps/api/.env`
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/swipe2win"
+JWT_SECRET="dev-secret"
+PORT=3001
+```
+
+`apps/web/.env.local`
+```env
+NEXT_PUBLIC_API_URL="http://localhost:3001"
 ```
 
 ### Prisma + seed
@@ -119,21 +124,10 @@ pnpm --filter @swipe2win/api prisma:migrate
 pnpm --filter @swipe2win/api prisma:seed
 ```
 
-### Run
+### Run apps
 ```bash
 pnpm dev
 ```
 
 - API: http://localhost:3001
-- API docs: http://localhost:3001/docs
 - Web: http://localhost:3000
-
-## 6) Phased Build Strategy Mapping
-- Phase 1: foundation/auth/profile/wallet ✅ scaffolded
-- Phase 2: boards + join + transaction integration ✅ scaffolded
-- Phase 3: 1v1 challenges + accept + results + history ✅ scaffolded
-- Phase 4: arena directory + sections + discovery endpoint ✅ scaffolded
-- Phase 5: deterministic recommendation engine + ranked feeds ✅ scaffolded
-- Phase 6: docs + seed + environment setup ✅ scaffolded
-
-This codebase is now structured for future creator arenas, realtime events, anti-cheat workflows, payouts, notifications, and admin/ops services.
