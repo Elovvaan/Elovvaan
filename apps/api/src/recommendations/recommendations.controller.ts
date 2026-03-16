@@ -1,4 +1,5 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { BehaviorEventType } from '@prisma/client';
 import { RecommendationsService } from './recommendations.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -21,5 +22,13 @@ export class RecommendationsController {
   @Get('challenges')
   challenges(@CurrentUser() user: { id: string }) {
     return this.recommendations.recommendedChallenges(user.id);
+  }
+
+  @Post('events')
+  event(
+    @CurrentUser() user: { id: string },
+    @Body() body: { eventType: BehaviorEventType; itemType: string; itemId: string; metadata?: unknown },
+  ) {
+    return this.recommendations.logBehaviorEvent(user.id, body);
   }
 }
