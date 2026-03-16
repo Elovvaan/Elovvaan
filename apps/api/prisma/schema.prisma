@@ -7,67 +7,295 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  USER
-  ADMIN
-}
-
-enum BoardStatus {
-  DRAFT
-  ACTIVE
-  CLOSED
-}
+enum Role { USER ADMIN }
+enum TransactionType { DEPOSIT WITHDRAWAL ENTRY_FEE PRIZE_PAYOUT ADJUSTMENT }
+enum TransactionStatus { PENDING COMPLETED FAILED }
+enum BoardStatus { DRAFT OPEN FULL CLOSED SETTLED CANCELLED }
+enum ChallengeType { PUBLIC DIRECT }
+enum ChallengeStatus { OPEN ACCEPTED DECLINED LIVE COMPLETED CANCELLED EXPIRED }
+enum FeaturedItemType { BOARD CHALLENGE }
+enum SavedItemType { BOARD CHALLENGE }
+enum BehaviorEventType { VIEW SWIPE_LEFT SWIPE_RIGHT SWIPE_UP JOIN ACCEPT SAVE SEARCH }
 
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
-  passwordHash String
-  role         Role        @default(USER)
-  credits      Int         @default(0)
-  entries      Entry[]
-  boardCells   BoardCell[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id              String          @id @default(cuid())
+  email           String          @unique
+  passwordHash    String
+  role            Role            @default(USER)
+  isActive        Boolean         @default(true)
+  profile         Profile?
+  wallet          Wallet?
+  refreshTokens   RefreshToken[]
+  boardsCreated   Board[]         @relation("boards_created")
+  boardEntries    BoardEntry[]
+  challengesMade  Challenge[]     @relation("challenges_created")
+  challengeParts  ChallengeParticipant[]
+  challengeWins   ChallengeResult[] @relation("challenge_winner")
+  skillProfile    UserSkillProfile?
+  preferences     UserPreference?
+  behaviorEvents  UserBehaviorEvent[]
+  recommendations ChallengeRecommendation[]
+  rivalriesA      UserRivalry[]   @relation("rivalry_a")
+  rivalriesB      UserRivalry[]   @relation("rivalry_b")
+  savedItems      SavedItem[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Profile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  username        String   @unique
+  avatarUrl       String?
+  bio             String?
+  onboardingDone  Boolean  @default(false)
+  wins            Int      @default(0)
+  losses          Int      @default(0)
+  earnings        Decimal  @default(0) @db.Decimal(12,2)
+  gamesPlayed     Int      @default(0)
+  favoriteCategoryId String?
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  favoriteCategory Category? @relation(fields: [favoriteCategoryId], references: [id])
+  achievements    Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model RefreshToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+}
+
+model Wallet {
+  id            String             @id @default(cuid())
+  userId         String             @unique
+  balance        Decimal            @default(0) @db.Decimal(12,2)
+  creditBalance  Decimal            @default(0) @db.Decimal(12,2)
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions   WalletTransaction[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}
+
+model WalletTransaction {
+  id            String            @id @default(cuid())
+  walletId       String
+  userId         String
+  type           TransactionType
+  status         TransactionStatus @default(COMPLETED)
+  amount         Decimal           @db.Decimal(12,2)
+  note           String?
+  metadata       Json?
+  wallet         Wallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime          @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Category {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  slug        String      @unique
+  boards      Board[]
+  challenges  Challenge[]
+  profilesFav Profile[]
+  createdAt   DateTime    @default(now())
 }
 
 model Board {
   id            String      @id @default(cuid())
   title         String
-  slug          String      @unique
   description   String?
+  categoryId    String
+  entryFee      Decimal     @db.Decimal(12,2)
+  prizePool     Decimal     @db.Decimal(12,2)
+  spotCount     Int
+  filledSpots   Int         @default(0)
   status        BoardStatus @default(DRAFT)
-  pricePerEntry Decimal     @db.Decimal(10, 2)
-  totalCells    Int
-  filledCells   Int         @default(0)
-  cells         BoardCell[]
-  entries       Entry[]
+  endsAt        DateTime?
+  winnerUserId  String?
+  creatorId     String
+  category      Category    @relation(fields: [categoryId], references: [id])
+  creator       User        @relation("boards_created", fields: [creatorId], references: [id])
+  entries       BoardEntry[]
+  prizes        BoardPrize[]
+  tags          Tag[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
 
-model BoardCell {
-  id         String    @id @default(cuid())
-  boardId    String
-  board      Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  cellNumber Int
-  isClaimed  Boolean   @default(false)
-  userId     String?
-  user       User?     @relation(fields: [userId], references: [id])
-  claimedAt  DateTime?
-  entry      Entry?
-  createdAt  DateTime  @default(now())
+model BoardEntry {
+  id        String   @id @default(cuid())
+  boardId   String
+  userId    String
+  amount    Decimal  @db.Decimal(12,2)
+  slotNo    Int
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 
-  @@unique([boardId, cellNumber])
+  @@unique([boardId, slotNo])
+  @@index([boardId, userId])
 }
 
-model Entry {
+model BoardPrize {
+  id        String   @id @default(cuid())
+  boardId   String
+  rank      Int
+  amount    Decimal  @db.Decimal(12,2)
+  label     String?
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+}
+
+model Challenge {
+  id                String          @id @default(cuid())
+  title             String
+  description       String?
+  categoryId        String
+  type              ChallengeType
+  status            ChallengeStatus @default(OPEN)
+  entryFee          Decimal         @db.Decimal(12,2)
+  prizePool         Decimal         @db.Decimal(12,2)
+  creatorId         String
+  calledOutUserId   String?
+  startsAt          DateTime?
+  completedAt       DateTime?
+  category          Category        @relation(fields: [categoryId], references: [id])
+  creator           User            @relation("challenges_created", fields: [creatorId], references: [id])
+  participants      ChallengeParticipant[]
+  result            ChallengeResult?
+  tags              Tag[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model ChallengeParticipant {
+  id          String   @id @default(cuid())
+  challengeId String
+  userId      String
+  acceptedAt  DateTime?
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+}
+
+model ChallengeResult {
+  id          String   @id @default(cuid())
+  challengeId String   @unique
+  winnerUserId String
+  score       String?
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  winner      User      @relation("challenge_winner", fields: [winnerUserId], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+model Tag {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  boards      Board[]
+  challenges  Challenge[]
+}
+
+model FeaturedContent {
+  id          String           @id @default(cuid())
+  type        FeaturedItemType
+  boardId     String?
+  challengeId String?
+  title       String
+  subtitle    String?
+  weight      Int              @default(1)
+  isActive    Boolean          @default(true)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime         @default(now())
+}
+
+model UserSkillProfile {
+  id               String   @id @default(cuid())
+  userId            String   @unique
+  skillScore        Float    @default(1000)
+  winRate           Float    @default(0)
+  acceptanceRate    Float    @default(0)
+  avgEntryFee       Float    @default(0)
+  volatility        Float    @default(0)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt         DateTime @updatedAt
+}
+
+model UserPreference {
+  id                String   @id @default(cuid())
+  userId             String   @unique
+  preferredCategoryIds String[]
+  minEntryFee        Float    @default(0)
+  maxEntryFee        Float    @default(100)
+  preferredModes     String[]
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt          DateTime @updatedAt
+}
+
+model MatchmakingScore {
+  id           String   @id @default(cuid())
+  userId       String
+  opponentId   String
+  fairness     Float
+  rivalryBoost Float    @default(0)
+  finalScore   Float
+  computedAt   DateTime @default(now())
+
+  @@unique([userId, opponentId])
+}
+
+model ChallengeRecommendation {
   id          String   @id @default(cuid())
   userId      String
-  boardId     String
-  boardCellId String   @unique
-  amountPaid  Decimal  @db.Decimal(10, 2)
+  challengeId String
+  score       Float
+  reason      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  board       Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  boardCell   BoardCell @relation(fields: [boardCellId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
+
+  @@unique([userId, challengeId])
+}
+
+model UserRivalry {
+  id            String   @id @default(cuid())
+  userAId       String
+  userBId       String
+  matchCount    Int      @default(0)
+  intensity     Float    @default(0)
+  userA         User     @relation("rivalry_a", fields: [userAId], references: [id], onDelete: Cascade)
+  userB         User     @relation("rivalry_b", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId])
+}
+
+model UserBehaviorEvent {
+  id          String            @id @default(cuid())
+  userId       String
+  eventType    BehaviorEventType
+  itemType     String
+  itemId       String
+  metadata     Json?
+  createdAt    DateTime          @default(now())
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model SavedItem {
+  id          String       @id @default(cuid())
+  userId      String
+  itemType    SavedItemType
+  itemId      String
+  createdAt   DateTime     @default(now())
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemType, itemId])
 }

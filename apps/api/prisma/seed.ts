@@ -1,53 +1,103 @@
-import { PrismaClient, Role, BoardStatus } from '@prisma/client';
+import { PrismaClient, BoardStatus, ChallengeStatus, ChallengeType } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-async function createBoardWithCells(title: string, slug: string, status: BoardStatus, totalCells: number, pricePerEntry: number) {
-  const board = await prisma.board.create({
-    data: { title, slug, status, totalCells, pricePerEntry, filledCells: 0 },
-  });
-
-  await prisma.boardCell.createMany({
-    data: Array.from({ length: totalCells }, (_, i) => ({
-      boardId: board.id,
-      cellNumber: i + 1,
-    })),
-  });
-
-  return board;
-}
-
 async function main() {
-  const passwordHash = await bcrypt.hash('ChangeMe123!', 10);
+  const categories = await Promise.all(
+    ['FPS', 'Sports', 'Strategy', 'Arcade', 'Trivia'].map((name) =>
+      prisma.category.upsert({
+        where: { slug: name.toLowerCase() },
+        create: { name, slug: name.toLowerCase() },
+        update: {},
+      }),
+    ),
+  );
 
-  await prisma.user.upsert({
-    where: { email: 'admin@swipe2win.com' },
+  const passwordHash = await bcrypt.hash('Passw0rd!', 10);
+  const user = await prisma.user.upsert({
+    where: { email: 'demo@swipe2win.app' },
     update: {},
-    create: { email: 'admin@swipe2win.com', passwordHash, role: Role.ADMIN },
+    create: {
+      email: 'demo@swipe2win.app',
+      passwordHash,
+      profile: { create: { username: 'demoPlayer', onboardingDone: true } },
+      wallet: { create: { balance: 250, creditBalance: 50 } },
+      skillProfile: { create: { skillScore: 1060, winRate: 0.62, acceptanceRate: 0.74, avgEntryFee: 12 } },
+      preferences: {
+        create: {
+          preferredCategoryIds: [categories[0].id, categories[1].id],
+          minEntryFee: 5,
+          maxEntryFee: 25,
+          preferredModes: ['public', 'direct'],
+        },
+      },
+    },
+    include: { wallet: true },
   });
 
-  const users = ['alex@swipe2win.com', 'sam@swipe2win.com', 'jordan@swipe2win.com'];
-  for (const email of users) {
-    await prisma.user.upsert({
-      where: { email },
-      update: {},
-      create: { email, passwordHash, role: Role.USER },
-    });
-  }
+  await prisma.board.createMany({
+    data: [
+      {
+        title: 'Night Clash Prize Board',
+        description: 'Fast-fill board for FPS fans',
+        categoryId: categories[0].id,
+        entryFee: 10,
+        prizePool: 180,
+        spotCount: 18,
+        filledSpots: 6,
+        status: BoardStatus.OPEN,
+        creatorId: user.id,
+      },
+      {
+        title: 'Weekend Sports Ladder',
+        description: 'Competitive sports challenge board',
+        categoryId: categories[1].id,
+        entryFee: 15,
+        prizePool: 300,
+        spotCount: 20,
+        filledSpots: 9,
+        status: BoardStatus.OPEN,
+        creatorId: user.id,
+      },
+    ],
+    skipDuplicates: true,
+  });
 
-  const existing = await prisma.board.count();
-  if (existing === 0) {
-    await createBoardWithCells('March Mega Board', 'march-mega-board', BoardStatus.ACTIVE, 25, 5);
-    await createBoardWithCells('Spring Lucky Board', 'spring-lucky-board', BoardStatus.DRAFT, 16, 2.5);
-    await createBoardWithCells('Weekend Winner Board', 'weekend-winner-board', BoardStatus.ACTIVE, 36, 3);
-  }
+  await prisma.challenge.createMany({
+    data: [
+      {
+        title: '1v1 Aim Duel',
+        description: 'Public challenge in FPS',
+        categoryId: categories[0].id,
+        type: ChallengeType.PUBLIC,
+        status: ChallengeStatus.OPEN,
+        entryFee: 12,
+        prizePool: 24,
+        creatorId: user.id,
+      },
+      {
+        title: 'Trivia Callout',
+        description: 'Direct challenge from creator',
+        categoryId: categories[4].id,
+        type: ChallengeType.DIRECT,
+        status: ChallengeStatus.OPEN,
+        entryFee: 8,
+        prizePool: 16,
+        creatorId: user.id,
+      },
+    ],
+    skipDuplicates: true,
+  });
+
+  console.log('Seed complete');
 }
 
 main()
-  .then(async () => prisma.$disconnect())
-  .catch(async (error) => {
-    console.error(error);
-    await prisma.$disconnect();
+  .catch((e) => {
+    console.error(e);
     process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   });

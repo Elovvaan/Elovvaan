@@ -1,33 +1,32 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { BoardsService } from './boards.service';
-import { ClaimCellDto } from './dto/claim-cell.dto';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CreateBoardDto } from './dto/create-board.dto';
 
-@ApiTags('boards')
 @Controller('boards')
 export class BoardsController {
-  constructor(private readonly boardsService: BoardsService) {}
+  constructor(private boardsService: BoardsService) {}
 
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @Get()
-  getBoards() {
-    return this.boardsService.listBoards();
+  list() {
+    return this.boardsService.list();
   }
 
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @Get(':id')
-  getBoard(@Param('id') id: string) {
-    return this.boardsService.getBoard(id);
+  details(@Param('id') id: string) {
+    return this.boardsService.details(id);
   }
 
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @Post(':id/claim')
-  claimBoardCell(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: ClaimCellDto) {
-    return this.boardsService.claimCell(id, userId, dto);
+  @Post()
+  create(@CurrentUser() user: { id: string }, @Body() dto: CreateBoardDto) {
+    return this.boardsService.create(user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/join')
+  join(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.boardsService.join(user.id, id);
   }
 }
