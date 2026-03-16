@@ -131,3 +131,47 @@ pnpm dev
 
 - API: http://localhost:3001
 - Web: http://localhost:3000
+
+
+## pnpm workspace recovery (install/build failures)
+
+Run these from repository root if install/build is failing due to proxy/registry/package-manager drift.
+
+```bash
+# 1) verify toolchain
+node -v
+corepack enable
+corepack prepare pnpm@9.12.2 --activate
+pnpm -v
+
+# 2) verify registries and local npm config
+pnpm config get registry
+npm config get registry
+cat .npmrc
+cat pnpm-workspace.yaml
+
+# 3) clean mixed package-manager state (monorepo root + workspace apps)
+find . -maxdepth 3 -name node_modules -type d -prune -exec rm -rf {} +
+rm -f package-lock.json yarn.lock npm-shrinkwrap.json
+rm -f apps/*/package-lock.json apps/*/yarn.lock apps/*/npm-shrinkwrap.json
+rm -f pnpm-lock.yaml
+
+# 4) install + build + run
+pnpm install
+pnpm build
+pnpm dev
+```
+
+If your shell exports a broken proxy, clear it for the pnpm commands:
+
+```bash
+env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy -u npm_config_http_proxy -u npm_config_https_proxy pnpm install
+```
+
+Expected filters in this monorepo:
+
+```bash
+pnpm --filter @swipe2win/api build
+pnpm --filter @swipe2win/web build
+pnpm --filter @swipe2win/admin build
+```
