@@ -22,8 +22,6 @@ export class AuthService {
         passwordHash,
         profile: { create: { username: dto.username, onboardingDone: false } },
         wallet: { create: { balance: 0, creditBalance: 0 } },
-        skillProfile: { create: {} },
-        preferences: { create: { preferredCategoryIds: [], preferredModes: [] } },
       },
       include: { profile: true },
     });

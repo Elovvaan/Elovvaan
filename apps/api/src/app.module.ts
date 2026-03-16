@@ -5,13 +5,9 @@ import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { ProfilesModule } from './profiles/profiles.module';
 import { WalletModule } from './wallet/wallet.module';
 import { BoardsModule } from './boards/boards.module';
-import { ChallengesModule } from './challenges/challenges.module';
-import { ArenaModule } from './arena/arena.module';
-import { RecommendationsModule } from './recommendations/recommendations.module';
-import { ProfilesModule } from './profiles/profiles.module';
-import { LeaderboardModule } from './leaderboard/leaderboard.module';
 
 @Module({
   imports: [
@@ -20,13 +16,9 @@ import { LeaderboardModule } from './leaderboard/leaderboard.module';
     HealthModule,
     AuthModule,
     UsersModule,
+    ProfilesModule,
     WalletModule,
     BoardsModule,
-    ChallengesModule,
-    ArenaModule,
-    RecommendationsModule,
-    ProfilesModule,
-    LeaderboardModule,
   ],
 })
 export class AppModule {}
