@@ -1,6 +1,46 @@
 import Link from 'next/link';
 
 export default function HomePage() {
+  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = authStorage.get();
+    if (!token) {
+      setError('Login required to load personalized recommendations.');
+      return;
+    }
+
+    apiFetch<{ feed: FeedItem[] }>('/recommendations/home', {}, token)
+      .then((data) => setFeed(data.feed ?? []))
+      .catch((err) => setError(String(err?.message ?? err)));
+  }, []);
+
+  async function trackAction(feedItem: FeedItem, action: 'SWIPE_LEFT' | 'JOIN' | 'SAVE' | 'SHARE') {
+    const token = authStorage.get();
+    if (!token) return;
+
+    await apiFetch(
+      '/recommendations/events',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          eventType: action === 'SHARE' ? 'VIEW' : action,
+          itemType: feedItem.type,
+          itemId: feedItem.item.id,
+          metadata: { categoryId: feedItem.item.category?.id },
+        }),
+      },
+      token,
+    ).catch(() => undefined);
+
+    if (action === 'SWIPE_LEFT') {
+      setFeed((prev) => prev.filter((x) => x.item.id !== feedItem.item.id));
+    }
+  }
+
+  const rankedFeed = useMemo(() => [...feed].sort((a, b) => b.score - a.score), [feed]);
+
   return (
     <div className="space-y-4">
       <header className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900 p-4">
