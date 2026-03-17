@@ -215,22 +215,27 @@ export class RecommendationsService {
     for (const challenge of input.challengeHistory) {
       weights[challenge.categoryId] = (weights[challenge.categoryId] ?? 0) + 4;
     }
-    for (const event of input.behaviorEvents) {
+    for (const [index, event] of input.behaviorEvents.entries()) {
       const categoryId = this.extractCategoryId(event.metadata);
       if (!categoryId) continue;
-      const eventWeight = event.eventType === BehaviorEventType.JOIN || event.eventType === BehaviorEventType.ACCEPT ? 2 : 1;
-      weights[categoryId] = (weights[categoryId] ?? 0) + eventWeight;
+
+      const recencyDecay = Math.max(0.65, 1.25 - index * 0.01);
+      const eventWeight = this.behaviorEventWeight(event.eventType) * recencyDecay;
+      weights[categoryId] = Number(((weights[categoryId] ?? 0) + eventWeight).toFixed(3));
     }
 
     const sorted = Object.entries(weights).sort((a, b) => b[1] - a[1]);
     return {
       weights,
-      topCategoryIds: sorted.slice(0, 3).map(([categoryId]) => categoryId),
+      topCategoryIds: sorted
+        .filter(([, weight]) => weight > 0)
+        .slice(0, 3)
+        .map(([categoryId]) => categoryId),
     };
   }
 
   private calculateEntryFeeComfortBand(entryFees: number[]) {
-    if (!entryFees.length) return { min: 0, max: 20, mid: 10, width: 20 };
+    if (!entryFees.length) return { min: 6, max: 14, mid: 10, width: 8 };
 
     const avg = entryFees.reduce((sum, fee) => sum + fee, 0) / entryFees.length;
     const variance = entryFees.reduce((sum, fee) => sum + (fee - avg) ** 2, 0) / entryFees.length;
@@ -264,14 +269,23 @@ export class RecommendationsService {
     fillRatio: number;
     userMetrics: {
       skillScore: number;
+      categoryPreference: Record<string, number>;
       preferredCategoryIds: string[];
-      comfortBand: { min: number; max: number; mid: number };
+      comfortBand: { min: number; max: number; mid: number; width: number };
       acceptanceRate: number;
     };
   }) {
-    const categoryPreference = input.userMetrics.preferredCategoryIds.includes(input.categoryId) ? 1 : 0.35;
+    const categorySignal = input.userMetrics.categoryPreference[input.categoryId] ?? 0;
+    const hasBehaviorSignals = Object.keys(input.userMetrics.categoryPreference).length > 0;
+    const categoryPreference = hasBehaviorSignals
+      ? input.userMetrics.preferredCategoryIds.includes(input.categoryId)
+        ? Math.min(1, Math.max(0.2, categorySignal / 6))
+        : categorySignal > 0
+          ? Math.min(0.75, categorySignal / 8)
+          : 0.15
+      : 0.5;
     const entryDistance = Math.abs(input.entryFee - input.userMetrics.comfortBand.mid);
-    const entryFit = Math.max(0, 1 - entryDistance / Math.max(5, input.userMetrics.comfortBand.max));
+    const entryFit = Math.max(0, 1 - entryDistance / Math.max(4, input.userMetrics.comfortBand.width));
     const prizeValue = Math.min(1, input.prizePool / Math.max(1, input.entryFee * 10));
     const urgency = Math.max(0, 1 - input.fillRatio);
     const engagement = input.userMetrics.acceptanceRate;
@@ -390,5 +404,24 @@ export class RecommendationsService {
     if (!metadata || typeof metadata !== 'object') return null;
     const categoryId = (metadata as Record<string, unknown>).categoryId;
     return typeof categoryId === 'string' ? categoryId : null;
+  }
+
+  private behaviorEventWeight(eventType: BehaviorEventType) {
+    switch (eventType) {
+      case BehaviorEventType.JOIN:
+      case BehaviorEventType.ACCEPT:
+        return 3;
+      case BehaviorEventType.SAVE:
+      case BehaviorEventType.SWIPE_RIGHT:
+        return 2;
+      case BehaviorEventType.VIEW:
+      case BehaviorEventType.SEARCH:
+        return 0.75;
+      case BehaviorEventType.SWIPE_LEFT:
+      case BehaviorEventType.SWIPE_UP:
+        return -2;
+      default:
+        return 0;
+    }
   }
 }
