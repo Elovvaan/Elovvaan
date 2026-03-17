@@ -7,6 +7,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(8),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   FRONTEND_URL: z.string().default('http://localhost:3000'),
+  RECOMMENDATIONS_DEBUG_LOGS: z.enum(['0', '1']).optional(),
 });
 
 export function validateEnv(config: Record<string, unknown>) {

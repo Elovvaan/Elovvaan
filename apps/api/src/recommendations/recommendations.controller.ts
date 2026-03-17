@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Logger, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Logger, NotFoundException, Post, UseGuards } from '@nestjs/common';
 import { RecommendationsService } from './recommendations.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -17,6 +17,26 @@ export class RecommendationsController {
     this.logger.debug(`Loading home recommendations for user=${user.id}`);
     const data = await this.recommendations.getHome(user.id);
     return recommendationsHomeResponseSchema.parse(data);
+  }
+
+  @Get('home/debug')
+  async homeDebug(@CurrentUser() user: { id: string }) {
+    if (process.env.NODE_ENV !== 'development') {
+      throw new NotFoundException();
+    }
+
+    this.logger.debug(`Loading debug home recommendations for user=${user.id}`);
+    return this.recommendations.getHomeDebug(user.id);
+  }
+
+  @Post('debug/reset-derived-state')
+  async resetDerivedState(@CurrentUser() user: { id: string }) {
+    if (process.env.NODE_ENV !== 'development') {
+      throw new NotFoundException();
+    }
+
+    const result = await this.recommendations.resetDerivedRecommendationState(user.id);
+    return { ok: true, ...result };
   }
 
   @Get('boards')
