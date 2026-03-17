@@ -109,6 +109,7 @@ Create env files:
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/swipe2win"
 JWT_SECRET="dev-secret"
+FRONTEND_URL="http://localhost:3000"
 PORT=3001
 ```
 
@@ -119,18 +120,17 @@ NEXT_PUBLIC_API_URL="http://localhost:3001"
 
 ### Prisma + seed
 ```bash
-pnpm --filter @swipe2win/api prisma:generate
-pnpm --filter @swipe2win/api prisma:migrate
-pnpm --filter @swipe2win/api prisma:seed
+pnpm db:setup
 ```
 
 ### Run apps
 ```bash
-pnpm dev
+pnpm dev:all
 ```
 
 - API: http://localhost:3001
 - Web: http://localhost:3000
+- Admin: http://localhost:3002
 
 
 ## pnpm workspace recovery (install/build failures)
@@ -183,9 +183,7 @@ Run **all commands from repo root**:
 ```bash
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
-pnpm db:generate
-pnpm db:migrate
-pnpm db:seed
+pnpm db:setup
 ```
 
 Start services (separate shells, from root):
@@ -193,6 +191,7 @@ Start services (separate shells, from root):
 ```bash
 pnpm dev:api
 pnpm dev:web
+pnpm dev:admin
 ```
 
 Validation flow for recommendations and feed:
@@ -242,9 +241,7 @@ Manual QA checklist (ranked Home feed):
 Useful one-off root commands:
 
 ```bash
-pnpm --filter @swipe2win/api prisma:generate
-pnpm --filter @swipe2win/api prisma:migrate
-pnpm --filter @swipe2win/api prisma:seed
+pnpm db:setup
 pnpm --filter @swipe2win/api dev
 pnpm --filter @swipe2win/web dev
 ```

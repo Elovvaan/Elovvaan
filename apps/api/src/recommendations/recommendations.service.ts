@@ -91,14 +91,18 @@ export class RecommendationsService {
       .sort((a, b) => b.recScore - a.recScore)
       .slice(0, 20);
 
-    await this.persistChallengeRecommendations(
-      userId,
-      scored.map((challenge) => ({
-        challengeId: challenge.id,
-        score: challenge.recScore,
-        reason: this.buildChallengeReason(challenge.recScore, challenge.rivalryStrength, metrics.acceptanceRate),
-      })),
-    );
+    try {
+      await this.persistChallengeRecommendations(
+        userId,
+        scored.map((challenge) => ({
+          challengeId: challenge.id,
+          score: challenge.recScore,
+          reason: this.buildChallengeReason(challenge.recScore, challenge.rivalryStrength, metrics.acceptanceRate),
+        })),
+      );
+    } catch (error) {
+      this.logger.warn(`Challenge recommendation persistence failed user=${userId}: ${String(error)}`);
+    }
 
     return scored;
   }
