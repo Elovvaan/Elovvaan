@@ -129,6 +129,7 @@ pnpm dev:all
 ```
 
 - API: http://localhost:3001
+- API docs: http://localhost:3001/docs
 - Web: http://localhost:3000
 - Admin: http://localhost:3002
 
@@ -194,13 +195,17 @@ pnpm dev:web
 pnpm dev:admin
 ```
 
+Expected local URLs:
+- API: http://localhost:3001
+- API docs: http://localhost:3001/docs
+- Web: http://localhost:3000
+
 Validation flow for recommendations and feed:
 
 1. Register/login from web (`/auth/register` or `/auth/login`) to get a local session token.
 2. Verify home recommendations API returns feed data (`GET /recommendations/home`) while authenticated.
 3. Trigger interaction logging via UI actions (join/save/dismiss) and verify events are accepted (`POST /recommendations/events`).
 4. Confirm boards list and board detail pages still work with seeded data.
-
 
 Quick recommendation API smoke payload (`POST /recommendations/events`):
 
@@ -213,6 +218,21 @@ Quick recommendation API smoke payload (`POST /recommendations/events`):
 }
 ```
 
+Expected deterministic ack shape (`POST /recommendations/events`):
+
+```json
+{
+  "ok": true,
+  "event": {
+    "id": "<event-id>",
+    "eventType": "JOIN",
+    "itemType": "BOARD",
+    "itemId": "<board-or-challenge-id>",
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  }
+}
+```
+
 Expected minimum home response shape (`GET /recommendations/home`):
 
 ```json
@@ -222,7 +242,11 @@ Expected minimum home response shape (`GET /recommendations/home`):
     {
       "type": "BOARD",
       "score": 73.12,
-      "item": { "id": "...", "title": "...", "category": { "id": "...", "name": "..." } }
+      "item": {
+        "id": "<board-id>",
+        "title": "Friday Night FPS Sprint",
+        "category": { "id": "<category-id>", "name": "FPS" }
+      }
     }
   ],
   "rankedBoards": [],
@@ -230,13 +254,14 @@ Expected minimum home response shape (`GET /recommendations/home`):
 }
 ```
 
-Manual QA checklist (ranked Home feed):
+Final smoke checklist (ranked Home + telemetry):
 
 1. Home shows a loading message before the feed appears.
 2. Home shows a friendly empty state when no feed items are returned.
 3. Home still renders if one or more feed items are malformed (invalid items are dropped).
 4. Clicking Join/Save/Dismiss logs an event; failed event logging shows a non-blocking warning.
 5. Dismiss removes an item from the rendered list and ranking order stays score-descending.
+
 
 Useful one-off root commands:
 

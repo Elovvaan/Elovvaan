@@ -101,7 +101,7 @@ export class RecommendationsService {
         })),
       );
     } catch (error) {
-      this.logger.warn(`Challenge recommendation persistence failed user=${userId}: ${String(error)}`);
+      this.logger.warn(`Failed to persist challenge recommendations user=${userId}: ${error instanceof Error ? error.message : 'unknown error'}`);
     }
 
     return scored;
@@ -142,43 +142,47 @@ export class RecommendationsService {
     const comfortBand = this.calculateEntryFeeComfortBand([...boardEntries.map((e) => Number(e.amount)), ...challengeHistory.map((c) => Number(c.entryFee))]);
     const acceptanceRate = this.calculateChallengeAcceptanceRate(challengeHistory);
 
-    await Promise.all([
-      this.prisma.userSkillProfile.upsert({
-        where: { userId },
-        create: {
-          userId,
-          skillScore,
-          winRate: this.winRate(profile?.wins ?? 0, profile?.losses ?? 0),
-          acceptanceRate,
-          avgEntryFee: comfortBand.mid,
-          volatility: comfortBand.width / 2,
-        },
-        update: {
-          skillScore,
-          winRate: this.winRate(profile?.wins ?? 0, profile?.losses ?? 0),
-          acceptanceRate,
-          avgEntryFee: comfortBand.mid,
-          volatility: comfortBand.width / 2,
-        },
-      }),
-      this.prisma.userPreference.upsert({
-        where: { userId },
-        create: {
-          userId,
-          preferredCategoryIds: categoryPreference.topCategoryIds,
-          minEntryFee: comfortBand.min,
-          maxEntryFee: comfortBand.max,
-          preferredModes: [],
-        },
-        update: {
-          preferredCategoryIds: categoryPreference.topCategoryIds,
-          minEntryFee: comfortBand.min,
-          maxEntryFee: comfortBand.max,
-        },
-      }),
-      this.recomputeRivalries(userId, challengeHistory),
-      this.recomputeMatchmakingScores(userId, skillScore),
-    ]);
+    try {
+      await Promise.all([
+        this.prisma.userSkillProfile.upsert({
+          where: { userId },
+          create: {
+            userId,
+            skillScore,
+            winRate: this.winRate(profile?.wins ?? 0, profile?.losses ?? 0),
+            acceptanceRate,
+            avgEntryFee: comfortBand.mid,
+            volatility: comfortBand.width / 2,
+          },
+          update: {
+            skillScore,
+            winRate: this.winRate(profile?.wins ?? 0, profile?.losses ?? 0),
+            acceptanceRate,
+            avgEntryFee: comfortBand.mid,
+            volatility: comfortBand.width / 2,
+          },
+        }),
+        this.prisma.userPreference.upsert({
+          where: { userId },
+          create: {
+            userId,
+            preferredCategoryIds: categoryPreference.topCategoryIds,
+            minEntryFee: comfortBand.min,
+            maxEntryFee: comfortBand.max,
+            preferredModes: [],
+          },
+          update: {
+            preferredCategoryIds: categoryPreference.topCategoryIds,
+            minEntryFee: comfortBand.min,
+            maxEntryFee: comfortBand.max,
+          },
+        }),
+        this.recomputeRivalries(userId, challengeHistory),
+        this.recomputeMatchmakingScores(userId, skillScore),
+      ]);
+    } catch (error) {
+      this.logger.warn(`Failed to persist recommendation metrics user=${userId}: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
 
     return {
       skillScore,
