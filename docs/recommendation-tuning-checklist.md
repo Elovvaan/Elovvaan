@@ -356,3 +356,78 @@ Short tuning guide:
 5. Capture `GET /recommendations/home/debug` post-action snapshot.
 6. Run the comparison checklist from Section 9.
 7. Record pass/fail notes and proceed to the next scenario.
+
+
+## 12) Local evidence capture pack (dev-only, deterministic)
+
+Use this structure to make baseline vs post-action snapshots easy to collect and compare without changing runtime architecture.
+
+### Recommended folder layout
+
+```text
+artifacts/
+  recommendations/
+    scenarios/
+      <run-id>/
+        A/
+          baseline.home-debug.json
+          post.home-debug.json
+          events.ndjson
+          comparison.md
+        B/
+          baseline.home-debug.json
+          post.home-debug.json
+          events.ndjson
+          comparison.md
+        C/
+          baseline.home-debug.json
+          post.home-debug.json
+          events.ndjson
+          comparison.md
+        D/
+          baseline.home-debug.json
+          post.home-debug.json
+          events.ndjson
+          comparison.md
+```
+
+Naming notes:
+- `<run-id>` should be deterministic and sortable, e.g. `2026-01-15T1030Z-local`.
+- Keep exactly one baseline and one post snapshot per scenario attempt.
+- Keep `events.ndjson` in send order to preserve reproducibility.
+
+### Lightweight comparison format
+
+Use a tiny markdown table in each `comparison.md` with only the evidence that drives a decision:
+
+- target category preference delta (`metrics.categoryPreference[target]`)
+- target-category presence/movement in top-5 (`rankedFeed[0..4]`)
+- non-target category stability (no unexplained collapse/takeover)
+- score-descending order check
+- movement magnitude plausibility for number/type of events
+
+Template: `docs/recommendation-scenario-result-template.md`
+
+### Minimum evidence to declare PASS/FAIL
+
+For **every** scenario, minimum evidence is:
+1. `baseline.home-debug.json`
+2. `post.home-debug.json`
+3. event send log (`events.ndjson`)
+4. one-line PASS/FAIL + reason in `comparison.md`
+
+Scenario-specific rubric:
+
+- **Scenario A (FPS reinforcement) PASS**: FPS signal increases and at least one FPS item moves up or stays stably dominant in top positions with explainable score changes. FAIL if no directional FPS change or if non-FPS collapses abruptly.
+- **Scenario B (Strategy negative pressure) PASS**: Strategy signal decreases and Strategy items move down relative to neutral peers. FAIL if three negative events produce little/no downward movement or if drop is extreme/unexplainable.
+- **Scenario C (Sports uplift) PASS**: Sports signal rises and at least one Sports item enters or climbs within top-5 without full-feed takeover. FAIL if uplift is negligible or if feed overreacts dramatically.
+- **Scenario D (Cold-start + one view) PASS**: Baseline remains non-personalized and one `VIEW` causes only mild movement. FAIL if cold-start is flat/noisy or single `VIEW` causes major rank inversion.
+
+### Short execution checklist (local validation run)
+
+1. Run seed/reset once for the batch (`pnpm db:seed`, or `pnpm db:setup` if schema changed).
+2. Create a new `<run-id>` folder under `artifacts/recommendations/scenarios/`.
+3. For each scenario A→D, run strict order: reset derived state → baseline snapshot → scenario events → post snapshot.
+4. Save snapshots/logs using the filenames above.
+5. Fill one `comparison.md` using the template and mark PASS/FAIL with one short reason.
+6. Only tune weights after evidence is captured; then rerun the impacted scenario first, then full A→D.
