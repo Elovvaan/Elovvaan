@@ -109,6 +109,7 @@ Create env files:
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/swipe2win"
 JWT_SECRET="dev-secret"
+FRONTEND_URL="http://localhost:3000"
 PORT=3001
 ```
 
@@ -124,12 +125,13 @@ pnpm db:setup
 
 ### Run apps
 ```bash
-pnpm dev
+pnpm dev:all
 ```
 
 - API: http://localhost:3001
 - API docs: http://localhost:3001/docs
 - Web: http://localhost:3000
+- Admin: http://localhost:3002
 
 
 ## pnpm workspace recovery (install/build failures)
@@ -190,6 +192,7 @@ Start services (separate shells, from root):
 ```bash
 pnpm dev:api
 pnpm dev:web
+pnpm dev:admin
 ```
 
 Expected local URLs:
@@ -263,9 +266,7 @@ Final smoke checklist (ranked Home + telemetry):
 Useful one-off root commands:
 
 ```bash
-pnpm --filter @swipe2win/api prisma:generate
-pnpm --filter @swipe2win/api prisma:migrate
-pnpm --filter @swipe2win/api prisma:seed
+pnpm db:setup
 pnpm --filter @swipe2win/api dev
 pnpm --filter @swipe2win/web dev
 ```

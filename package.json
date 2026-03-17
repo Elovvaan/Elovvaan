@@ -5,10 +5,12 @@
   "packageManager": "pnpm@9.12.2",
   "scripts": {
     "dev": "pnpm -r --parallel dev",
+    "dev:all": "pnpm dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "dev:api": "pnpm --filter @swipe2win/api dev",
     "dev:web": "pnpm --filter @swipe2win/web dev",
+    "dev:admin": "pnpm --filter @swipe2win/admin dev",
     "db:generate": "pnpm --filter @swipe2win/api prisma:generate",
     "db:migrate": "pnpm --filter @swipe2win/api prisma:migrate",
     "db:seed": "pnpm --filter @swipe2win/api prisma:seed",
