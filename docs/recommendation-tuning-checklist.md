@@ -118,3 +118,84 @@ Guardrails:
    - Dismiss: immediate item removal in UI + negative category pressure on reload.
 6. Confirm ordering remains strictly score-descending and API/UI order matches.
 7. Repeat for all scenarios; document any outlier where rank change is implausibly small or large.
+
+
+## 6) Dev-only debug surface for deterministic ranking validation
+
+Use the authenticated dev-only endpoint:
+
+- `GET /recommendations/home/debug`
+
+Response shape (recommended score breakdown contract):
+
+```json
+{
+  "generatedAt": "2026-01-01T12:00:00.000Z",
+  "metrics": {
+    "skillScore": 1234.5,
+    "categoryPreference": { "<categoryId>": 5.75 },
+    "preferredCategoryIds": ["<categoryId>"],
+    "comfortBand": { "min": 6, "max": 14, "mid": 10, "width": 8 },
+    "acceptanceRate": 0.5
+  },
+  "rankedFeed": [
+    {
+      "rank": 1,
+      "rankType": "BOARD",
+      "id": "...",
+      "categoryId": "...",
+      "score": 72.1,
+      "breakdown": {
+        "total": 72.1,
+        "raw": {
+          "categoryPreference": 0.8,
+          "entryFit": 0.9,
+          "prizeValue": 0.7,
+          "urgency": 0.6,
+          "engagement": 0.5,
+          "skillAffinity": 0.75
+        },
+        "weighted": {
+          "categoryPreference": 24,
+          "entryFit": 19.8,
+          "prizeValue": 14,
+          "urgency": 6,
+          "engagement": 4,
+          "skillAffinity": 7.5
+        }
+      }
+    }
+  ]
+}
+```
+
+Challenge breakdown extends this with:
+- `weighted.boardScore`, `weighted.rivalryStrength`, `weighted.acceptanceRate`, `weighted.socialProof`
+- `boardScoreBreakdown` for the nested board-like component.
+
+Optional lightweight logs in dev:
+- Set `RECOMMENDATIONS_DEBUG_LOGS=1` to emit top-5 score preview in server logs when `/recommendations/home` runs.
+- Keep disabled by default for low-noise local runs.
+
+## 7) Repeatability / reset guidance (avoid hidden state drift)
+
+- Always start a validation batch with `pnpm db:seed` (or `pnpm db:setup` if schema changed).
+- For iterative scenario reruns on one seeded user, call `POST /recommendations/debug/reset-derived-state` before recapturing baseline.
+  - This clears derived recommendation state rows (`UserSkillProfile`, `UserPreference`, `ChallengeRecommendation`, `UserRivalry`, `MatchmakingScore`) while keeping core seeded entities/events intact.
+- Re-login and capture a fresh baseline from `/recommendations/home/debug` immediately after reset.
+
+## 8) Concise execution plan for the 4 scenarios
+
+1. **Reset + baseline**
+   - Run seed/reset, authenticate as scenario user, call `/recommendations/home/debug`, save `rankedFeed.slice(0, 8)`.
+2. **Inject telemetry batch**
+   - Post only the scenario-specific events (`JOIN`/`SAVE`/negative/`VIEW`).
+3. **Recompute snapshot**
+   - Call `/recommendations/home/debug` again and diff top-8 by `rank`, `id`, `categoryId`, `score`, and `breakdown.weighted` deltas.
+4. **Directional checks**
+   - Scenario A: FPS up/reinforced.
+   - Scenario B: Strategy down after negatives.
+   - Scenario C: Sports uplift without takeover.
+   - Scenario D: cold-start mostly stable, one `VIEW` = mild move.
+5. **Repeat cleanly**
+   - Before next scenario, reseed or call `reset-derived-state` + re-auth, then repeat steps 1–4.

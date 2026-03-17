@@ -5,17 +5,23 @@ import { PrismaService } from '../prisma/prisma.service';
 @Injectable()
 export class RecommendationsService {
   private readonly logger = new Logger(RecommendationsService.name);
+  private readonly isDev = process.env.NODE_ENV === 'development';
+  private readonly verboseDebugLogs = process.env.RECOMMENDATIONS_DEBUG_LOGS === '1';
 
   constructor(private prisma: PrismaService) {}
 
   async getHome(userId: string) {
-    const [metrics, rankedBoards, rankedChallenges] = await Promise.all([
-      this.computeUserMetrics(userId),
-      this.recommendedBoards(userId),
-      this.recommendedChallenges(userId),
-    ]);
+    const metrics = await this.computeUserMetrics(userId);
+    const [rankedBoards, rankedChallenges] = await Promise.all([this.recommendedBoards(userId, metrics), this.recommendedChallenges(userId, metrics)]);
 
     this.logger.debug(`Home recommendations computed user=${userId} boards=${rankedBoards.length} challenges=${rankedChallenges.length}`);
+    if (this.isDev && this.verboseDebugLogs) {
+      const preview = [...rankedBoards.map((b) => `BOARD:${b.id}:${b.recScore}`), ...rankedChallenges.map((c) => `CHALLENGE:${c.id}:${c.recScore}`)]
+        .sort((a, b) => Number(b.split(':')[2]) - Number(a.split(':')[2]))
+        .slice(0, 5)
+        .join(', ');
+      this.logger.debug(`Recommendation score preview user=${userId} top5=[${preview}]`);
+    }
 
     return {
       metrics,
@@ -30,7 +36,47 @@ export class RecommendationsService {
     };
   }
 
-  async recommendedBoards(userId: string) {
+  async getHomeDebug(userId: string) {
+    const metrics = await this.computeUserMetrics(userId);
+    const [boards, challenges] = await Promise.all([
+      this.recommendedBoards(userId, metrics, { includeBreakdown: true }),
+      this.recommendedChallenges(userId, metrics, { includeBreakdown: true }),
+    ]);
+
+    const rankedFeed = [
+      ...boards.map((board) => ({
+        rankType: 'BOARD' as const,
+        id: board.id,
+        categoryId: board.categoryId,
+        score: board.recScore,
+        breakdown: board.scoreBreakdown,
+      })),
+      ...challenges.map((challenge) => ({
+        rankType: 'CHALLENGE' as const,
+        id: challenge.id,
+        categoryId: challenge.categoryId,
+        score: challenge.recScore,
+        breakdown: challenge.scoreBreakdown,
+      })),
+    ]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 24)
+      .map((item, index) => ({ rank: index + 1, ...item }));
+
+    return {
+      generatedAt: new Date().toISOString(),
+      metrics,
+      rankedFeed,
+      rankedBoards: boards.map((board, index) => ({ rank: index + 1, ...board })),
+      rankedChallenges: challenges.map((challenge, index) => ({ rank: index + 1, ...challenge })),
+    };
+  }
+
+  async recommendedBoards(
+    userId: string,
+    precomputedMetrics?: Awaited<ReturnType<RecommendationsService['computeUserMetrics']>>,
+    options?: { includeBreakdown?: boolean },
+  ) {
     const [boards, metrics] = await Promise.all([
       this.prisma.board.findMany({
         where: { status: 'OPEN' },
@@ -38,25 +84,34 @@ export class RecommendationsService {
         orderBy: { createdAt: 'desc' },
         take: 50,
       }),
-      this.computeUserMetrics(userId),
+      precomputedMetrics ?? this.computeUserMetrics(userId),
     ]);
 
     return boards
-      .map((board) => ({
-        ...board,
-        recScore: this.computeBoardRecommendationScore({
+      .map((board) => {
+        const scoreDetails = this.computeBoardRecommendationScore({
           categoryId: board.categoryId,
           entryFee: Number(board.entryFee),
           prizePool: Number(board.prizePool),
           fillRatio: board.spotCount > 0 ? board.filledSpots / board.spotCount : 0,
           userMetrics: metrics,
-        }),
-      }))
+        });
+
+        return {
+          ...board,
+          recScore: scoreDetails.total,
+          ...(options?.includeBreakdown ? { scoreBreakdown: scoreDetails } : {}),
+        };
+      })
       .sort((a, b) => b.recScore - a.recScore)
       .slice(0, 20);
   }
 
-  async recommendedChallenges(userId: string) {
+  async recommendedChallenges(
+    userId: string,
+    precomputedMetrics?: Awaited<ReturnType<RecommendationsService['computeUserMetrics']>>,
+    options?: { includeBreakdown?: boolean },
+  ) {
     const [challenges, metrics] = await Promise.all([
       this.prisma.challenge.findMany({
         where: { status: ChallengeStatus.OPEN, participants: { none: { userId } } },
@@ -64,29 +119,35 @@ export class RecommendationsService {
         orderBy: { createdAt: 'desc' },
         take: 75,
       }),
-      this.computeUserMetrics(userId),
+      precomputedMetrics ?? this.computeUserMetrics(userId),
     ]);
 
     const scored = challenges
       .map((challenge) => {
         const rivalryStrength = this.getRivalryStrengthAgainst(challenge.creatorId, metrics.rivalries);
-        const score = this.computeChallengeRecommendationScore({
+        const boardScoreDetails = this.computeBoardRecommendationScore({
+          categoryId: challenge.categoryId,
+          entryFee: Number(challenge.entryFee),
+          prizePool: Number(challenge.prizePool),
+          fillRatio: Math.min(challenge.participants.length / 2, 1),
+          userMetrics: metrics,
+        });
+        const scoreDetails = this.computeChallengeRecommendationScore({
           categoryId: challenge.categoryId,
           entryFee: Number(challenge.entryFee),
           prizePool: Number(challenge.prizePool),
           participantCount: challenge.participants.length,
           acceptanceRate: metrics.acceptanceRate,
           rivalryStrength,
-          boardScore: this.computeBoardRecommendationScore({
-            categoryId: challenge.categoryId,
-            entryFee: Number(challenge.entryFee),
-            prizePool: Number(challenge.prizePool),
-            fillRatio: Math.min(challenge.participants.length / 2, 1),
-            userMetrics: metrics,
-          }),
+          boardScore: boardScoreDetails.total,
         });
 
-        return { ...challenge, recScore: score, rivalryStrength };
+        return {
+          ...challenge,
+          recScore: scoreDetails.total,
+          rivalryStrength,
+          ...(options?.includeBreakdown ? { scoreBreakdown: { ...scoreDetails, boardScoreBreakdown: boardScoreDetails } } : {}),
+        };
       })
       .sort((a, b) => b.recScore - a.recScore)
       .slice(0, 20);
@@ -105,6 +166,33 @@ export class RecommendationsService {
     }
 
     return scored;
+  }
+
+
+  async resetDerivedRecommendationState(userId: string) {
+    const [skillProfiles, preferences, recommendationRows, rivalriesA, rivalriesB, matchmakingRows] = await this.prisma.$transaction([
+      this.prisma.userSkillProfile.deleteMany({ where: { userId } }),
+      this.prisma.userPreference.deleteMany({ where: { userId } }),
+      this.prisma.challengeRecommendation.deleteMany({ where: { userId } }),
+      this.prisma.userRivalry.deleteMany({ where: { userAId: userId } }),
+      this.prisma.userRivalry.deleteMany({ where: { userBId: userId } }),
+      this.prisma.matchmakingScore.deleteMany({ where: { userId } }),
+    ]);
+
+    this.logger.debug(
+      `Reset derived recommendation state user=${userId} skillProfiles=${skillProfiles.count} preferences=${preferences.count} challengeRecommendations=${recommendationRows.count} rivalries=${rivalriesA.count + rivalriesB.count} matchmaking=${matchmakingRows.count}`,
+    );
+
+    return {
+      userId,
+      deleted: {
+        userSkillProfile: skillProfiles.count,
+        userPreference: preferences.count,
+        challengeRecommendation: recommendationRows.count,
+        userRivalry: rivalriesA.count + rivalriesB.count,
+        matchmakingScore: matchmakingRows.count,
+      },
+    };
   }
 
   async logBehaviorEvent(userId: string, input: { eventType: BehaviorEventType; itemType: string; itemId: string; metadata?: unknown }) {
@@ -291,14 +379,20 @@ export class RecommendationsService {
     const engagement = input.userMetrics.acceptanceRate;
     const skillAffinity = Math.min(1, input.userMetrics.skillScore / 1600);
 
-    return Number((
-      categoryPreference * 30 +
-      entryFit * 22 +
-      prizeValue * 20 +
-      urgency * 10 +
-      engagement * 8 +
-      skillAffinity * 10
-    ).toFixed(2));
+    const weighted = {
+      categoryPreference: Number((categoryPreference * 30).toFixed(2)),
+      entryFit: Number((entryFit * 22).toFixed(2)),
+      prizeValue: Number((prizeValue * 20).toFixed(2)),
+      urgency: Number((urgency * 10).toFixed(2)),
+      engagement: Number((engagement * 8).toFixed(2)),
+      skillAffinity: Number((skillAffinity * 10).toFixed(2)),
+    };
+
+    return {
+      total: Number((weighted.categoryPreference + weighted.entryFit + weighted.prizeValue + weighted.urgency + weighted.engagement + weighted.skillAffinity).toFixed(2)),
+      raw: { categoryPreference, entryFit, prizeValue, urgency, engagement, skillAffinity },
+      weighted,
+    };
   }
 
   private computeChallengeRecommendationScore(input: {
@@ -311,12 +405,23 @@ export class RecommendationsService {
     boardScore: number;
   }) {
     const socialProof = Math.min(1, input.participantCount / 2);
-    return Number((
-      input.boardScore * 0.62 +
-      input.rivalryStrength * 22 +
-      input.acceptanceRate * 10 +
-      socialProof * 6
-    ).toFixed(2));
+    const weighted = {
+      boardScore: Number((input.boardScore * 0.62).toFixed(2)),
+      rivalryStrength: Number((input.rivalryStrength * 22).toFixed(2)),
+      acceptanceRate: Number((input.acceptanceRate * 10).toFixed(2)),
+      socialProof: Number((socialProof * 6).toFixed(2)),
+    };
+
+    return {
+      total: Number((weighted.boardScore + weighted.rivalryStrength + weighted.acceptanceRate + weighted.socialProof).toFixed(2)),
+      raw: {
+        boardScore: input.boardScore,
+        rivalryStrength: input.rivalryStrength,
+        acceptanceRate: input.acceptanceRate,
+        socialProof,
+      },
+      weighted,
+    };
   }
 
   private async recomputeRivalries(userId: string, challenges: Array<{ id: string; participants: Array<{ userId: string }>; result: { winnerUserId: string } | null }>) {
